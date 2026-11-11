@@ -1,0 +1,227 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    color: #26352b;
+    line-height: 1.6;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 7%;
+    background: #ffffff;
+}
+
+.logo {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1d6338;
+}
+
+nav a {
+    text-decoration: none;
+    color: #26352b;
+    margin: 0 12px;
+    font-weight: 600;
+}
+
+.nav-button,
+.primary-button {
+    display: inline-block;
+    background: #267a42;
+    color: white;
+    padding: 12px 22px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.hero {
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    padding: 70px 10%;
+    color: white;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+        url("https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1800&q=80")
+        center/cover no-repeat;
+}
+
+.hero-content {
+    max-width: 600px;
+}
+
+.eyebrow {
+    color: #b8e6bd;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.hero h1 {
+    font-size: 52px;
+    line-height: 1.15;
+    margin: 15px 0;
+}
+
+.hero p {
+    margin-bottom: 25px;
+    font-size: 18px;
+}
+
+.services {
+    padding: 75px 8%;
+    text-align: center;
+}
+
+.services h2,
+.about h2,
+.quote h2 {
+    font-size: 32px;
+    color: #1d6338;
+    margin-bottom: 12px;
+}
+
+.service-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 22px;
+    margin-top: 35px;
+}
+
+.service-card {
+    padding: 30px 20px;
+    background: #f2f7f1;
+    border-radius: 8px;
+}
+
+.service-card h3 {
+    color: #267a42;
+    margin-bottom: 12px;
+}
+
+.about {
+    padding: 70px 12%;
+    text-align: center;
+    background: #edf4ec;
+}
+
+.quote {
+    padding: 70px 20px;
+    text-align: center;
+}
+
+.quote p {
+    margin-bottom: 25px;
+}
+
+footer {
+    background: #173d27;
+    color: white;
+    text-align: center;
+    padding: 35px 20px;
+}
+
+@media (max-width: 850px) {
+    .navbar {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    nav {
+        width: 100%;
+    }
+
+    nav a {
+        display: inline-block;
+        margin: 5px 10px 5px 0;
+    }
+
+    .service-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .hero h1 {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 500px) {
+    .service-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero h1 {
+        font-size: 34px;
+    }
+}
+
+
+/* Quote Request Form */
+
+.quote-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 600px;
+    margin: 30px auto;
+    padding: 30px;
+    background-color: #f2f7f1;
+    border-radius: 10px;
+    text-align: left;
+}
+
+.quote-form label {
+    display: block;
+    font-weight: bold;
+    color: #1d6338;
+}
+
+.quote-form input,
+.quote-form select,
+.quote-form textarea {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    font: inherit;
+}
+
+.quote-form input:focus,
+.quote-form select:focus,
+.quote-form textarea:focus {
+    outline: 2px solid #267a42;
+}
+
+.quote-form button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    cursor: pointer;
+}
+
+.quote-form button:hover {
+    background-color: #185c30;
+}
+
+#formMessage {
+    text-align: center;
+    color: #1d6338;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+@media (max-width: 600px) {
+    .quote-form {
+        padding: 20px;
+        margin: 20px 12px;
+    }
+}

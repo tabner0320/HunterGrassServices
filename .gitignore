@@ -1,0 +1,11 @@
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
+# .NET build folders
+bin/
+obj/
+
+# Environment files
+.env
