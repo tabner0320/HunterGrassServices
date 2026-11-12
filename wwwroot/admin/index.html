@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Admin Dashboard | Hunter Grass Services</title>
+
+    <link rel="stylesheet" href="admin.css">
+    <script src="admin.js" defer></script>
+</head>
+<body>
+
+    <!-- =====================================
+         Dashboard Layout
+         ===================================== -->
+
+    <div class="dashboard-container">
+
+        <!-- Sidebar Navigation -->
+
+        <aside class="sidebar">
+
+            <h2>Hunter Grass Services</h2>
+
+            <p>Administration</p>
+
+            <nav aria-label="Admin navigation">
+
+                <a href="#dashboard">Dashboard</a>
+
+                <a href="#quotes">Quote Requests</a>
+
+                <a href="/">View Website</a>
+
+            </nav>
+
+        </aside>
+
+        <!-- =================================
+             Main Dashboard
+             ================================= -->
+
+        <main class="main-content" id="dashboard">
+
+            <!-- Dashboard Header -->
+
+            <header class="dashboard-header">
+
+                <div>
+
+                    <h1>Admin Dashboard</h1>
+
+                    <p>Manage your lawn care business</p>
+
+                </div>
+
+                <!-- Header Actions -->
+
+                <div class="header-actions">
+
+                    <span class="demo-label">
+                        Demo Mode
+                    </span>
+
+                    <button
+                        type="button"
+                        id="resetDemo"
+                        class="reset-demo-button">
+                        Reset Demo
+                    </button>
+
+                </div>
+
+            </header>
+
+            <!-- =================================
+                 Dashboard Statistics
+                 ================================= -->
+
+            <section class="stats"
+                     aria-label="Dashboard statistics">
+
+                <!-- Total Quotes -->
+
+                <div class="stat-card">
+
+                    <h3>Total Quotes</h3>
+
+                    <p id="totalQuotes">0</p>
+
+                </div>
+
+                <!-- New Requests -->
+
+                <div class="stat-card">
+
+                    <h3>New Requests</h3>
+
+                    <p id="newQuotes">0</p>
+
+                </div>
+
+                <!-- Completed Quotes -->
+
+                <div class="stat-card">
+
+                    <h3>Completed</h3>
+
+                    <p id="completedQuotes">0</p>
+
+                </div>
+
+            </section>
+
+            <!-- =================================
+                 Customer Quote Requests
+                 ================================= -->
+
+            <section class="quotes-section" id="quotes">
+
+                <h2>Customer Quote Requests</h2>
+
+                <p>
+                    Sample requests for dashboard development.
+                </p>
+
+                <!-- Status Filter and Search -->
+
+                <div class="filter-container">
+
+                    <label for="statusFilter">
+                        Filter by Status:
+                    </label>
+
+                    <select id="statusFilter">
+
+                        <option value="All">
+                            All Requests
+                        </option>
+
+                        <option value="New">
+                            New
+                        </option>
+
+                        <option value="Contacted">
+                            Contacted
+                        </option>
+
+                        <option value="Completed">
+                            Completed
+                        </option>
+
+                    </select>
+
+                    <!-- Customer Search -->
+
+                    <label for="searchInput">
+                        Search:
+                    </label>
+
+                    <input
+                        type="search"
+                        id="searchInput"
+                        placeholder="Search customer or service..."
+                    >
+
+                </div>
+
+                <!-- Quote Requests Table -->
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th scope="col">Customer</th>
+
+                                <th scope="col">Service</th>
+
+                                <th scope="col">Date</th>
+
+                                <th scope="col">Status</th>
+
+                                <th scope="col">Actions</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="quotesTable">
+
+                            <!-- JavaScript will insert sample rows -->
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- =====================================
+         Quote Details Popup
+         ===================================== -->
+
+    <dialog
+        id="quoteDetailsDialog"
+        class="quote-dialog"
+        aria-labelledby="detailsTitle">
+
+        <!-- Popup Header -->
+
+        <div class="dialog-header">
+
+            <h2 id="detailsTitle">
+                Quote Request Details
+            </h2>
+
+            <button
+                type="button"
+                id="closeDetails"
+                class="close-button"
+                aria-label="Close quote details">
+                &times;
+            </button>
+
+        </div>
+
+        <!-- =================================
+             Popup Content
+             ================================= -->
+
+        <div class="dialog-content">
+
+            <!-- Quote ID -->
+
+            <p>
+                <strong>Quote ID:</strong>
+                <span id="detailId"></span>
+            </p>
+
+            <!-- Customer Name -->
+
+            <p>
+                <strong>Customer:</strong>
+                <span id="detailCustomer"></span>
+            </p>
+
+            <!-- Customer Email -->
+
+            <p>
+                <strong>Email:</strong>
+                <span id="detailEmail"></span>
+            </p>
+
+            <!-- Customer Phone -->
+
+            <p>
+                <strong>Phone:</strong>
+                <span id="detailPhone"></span>
+            </p>
+
+            <!-- Customer Address -->
+
+            <p>
+                <strong>Address:</strong>
+                <span id="detailAddress"></span>
+            </p>
+
+            <!-- Requested Service -->
+
+            <p>
+                <strong>Service:</strong>
+                <span id="detailService"></span>
+            </p>
+
+            <!-- Request Date -->
+
+            <p>
+                <strong>Date:</strong>
+                <span id="detailDate"></span>
+            </p>
+
+            <!-- Current Quote Status -->
+
+            <p>
+                <strong>Status:</strong>
+                <span id="detailStatus"></span>
+            </p>
+
+            <!-- =================================
+                 Update Quote Status
+                 ================================= -->
+
+            <div class="status-update-container">
+
+                <label for="updateStatus">
+                    Update Quote Status:
+                </label>
+
+                <select id="updateStatus">
+
+                    <option value="New">
+                        New
+                    </option>
+
+                    <option value="Contacted">
+                        Contacted
+                    </option>
+
+                    <option value="Completed">
+                        Completed
+                    </option>
+
+                </select>
+
+                <!-- Save Status Button -->
+
+                <button
+                    type="button"
+                    id="saveStatus">
+                    Save Status
+                </button>
+
+                <!-- Status Update Confirmation -->
+
+                <p
+                    id="statusUpdateMessage"
+                    role="status"
+                    aria-live="polite">
+                </p>
+
+            </div>
+
+            <!-- Customer Message -->
+
+            <p>
+                <strong>Customer Message:</strong>
+            </p>
+
+            <p id="detailMessage"></p>
+
+        </div>
+
+        <!-- =================================
+             Popup Footer
+             ================================= -->
+
+        <div class="dialog-footer">
+
+            <button
+                type="button"
+                id="closeDetailsFooter">
+                Close Details
+            </button>
+
+        </div>
+
+    </dialog>
+
+</body>
+</html>
