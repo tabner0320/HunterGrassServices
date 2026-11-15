@@ -1,6 +1,7 @@
 
 using HunterGrassServices.Api.Data;
 using HunterGrassServices.Api.Models;
+using HunterGrassServices.Api.Services;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -176,6 +177,14 @@ builder.Services.AddAuthorization(options =>
 // =========================================
 
 var app = builder.Build();
+
+
+// =========================================
+// INITIALIZE ADMINISTRATOR ROLE
+// =========================================
+
+await AdminInitializer.InitializeAsync(app.Services);
+
 
 // =========================================
 // MIDDLEWARE
