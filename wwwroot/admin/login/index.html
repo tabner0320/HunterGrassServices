@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Administrator Login | Hunter Grass Services</title>
+
+    <!-- Website Favicon -->
+    <link rel="icon"
+          type="image/svg+xml"
+          href="/favicon.svg">
+
+    <!-- Login Stylesheet -->
+    <link rel="stylesheet" href="login.css">
+
+    <!-- Login JavaScript -->
+    <script src="login.js" defer></script>
+</head>
+
+<body>
+
+    <!-- =========================================
+         ADMINISTRATOR LOGIN PAGE
+    ========================================== -->
+
+    <main class="login-page">
+
+        <section class="login-card">
+
+            <!-- =========================================
+                 COMPANY BRANDING
+            ========================================== -->
+
+            <div class="login-brand">
+
+                <div class="brand-icon" aria-hidden="true">
+                    🌿
+                </div>
+
+                <h1>Hunter Grass Services</h1>
+
+                <p>Administration Portal</p>
+
+            </div>
+
+            <!-- =========================================
+                 LOGIN HEADING
+            ========================================== -->
+
+            <div class="login-heading">
+
+                <h2>Welcome Back</h2>
+
+                <p>
+                    Sign in to manage customer quote requests
+                    and your lawn care business.
+                </p>
+
+            </div>
+
+            <!-- =========================================
+                 ADMINISTRATOR LOGIN FORM
+            ========================================== -->
+
+            <form id="loginForm" method="post">
+
+                <!-- Email Address -->
+
+                <div class="form-group">
+
+                    <label for="email">
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Enter your email address"
+                        autocomplete="username"
+                        maxlength="254"
+                        required
+                    >
+
+                </div>
+
+                <!-- Password -->
+
+                <div class="form-group">
+
+                    <label for="password">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        maxlength="256"
+                        required
+                    >
+
+                </div>
+
+                <!-- Show Password Option -->
+
+                <div class="form-options">
+
+                    <label class="show-password">
+
+                        <input
+                            type="checkbox"
+                            id="showPassword"
+                        >
+
+                        Show Password
+
+                    </label>
+
+                </div>
+
+                <!-- Sign In Button -->
+
+                <button
+                    type="submit"
+                    id="loginButton"
+                    class="login-button"
+                    disabled
+                >
+                    Sign In
+                </button>
+
+                <!-- Login Status Message -->
+
+                <p
+                    id="loginMessage"
+                    class="login-message"
+                    role="status"
+                    aria-live="polite"
+                >
+                    Loading secure login...
+                </p>
+
+            </form>
+
+            <!-- =========================================
+                 RETURN TO PUBLIC WEBSITE
+            ========================================== -->
+
+            <div class="login-footer">
+
+                <a href="/">
+                    &larr; Back to Website
+                </a>
+
+            </div>
+
+        </section>
+
+        <!-- =========================================
+             PAGE FOOTER
+        ========================================== -->
+
+        <footer class="page-footer">
+
+            <p>
+                &copy; 2026 Hunter Grass Services.
+                All rights reserved.
+            </p>
+
+        </footer>
+
+    </main>
+
+</body>
+</html>

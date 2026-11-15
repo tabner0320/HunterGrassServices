@@ -1,0 +1,27 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64">
+
+    <!-- Green background -->
+    <rect width="64"
+          height="64"
+          rx="14"
+          fill="#245c38"/>
+
+    <!-- Grass blades -->
+    <path d="M32 52
+             Q12 35 15 14
+             Q30 22 32 52"
+          fill="#8bc34a"/>
+
+    <path d="M32 52
+             Q32 24 43 10
+             Q49 32 32 52"
+          fill="#c5e1a5"/>
+
+    <path d="M32 52
+             Q42 35 55 29
+             Q53 48 32 52"
+          fill="#66bb6a"/>
+
+</svg>
