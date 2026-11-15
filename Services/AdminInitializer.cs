@@ -32,6 +32,7 @@ public static class AdminInitializer
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("AdminInitializer");
 
+        // Define the administrator role
         const string adminRole = "Admin";
 
         // =========================================
@@ -78,6 +79,11 @@ public static class AdminInitializer
         var adminPassword =
             configuration["AdminSettings:Password"];
 
+
+        // =========================================
+        // VALIDATE ADMINISTRATOR CONFIGURATION
+        // =========================================
+
         // Skip account creation when credentials
         // have not been configured
         if (string.IsNullOrWhiteSpace(adminEmail) ||
@@ -91,6 +97,7 @@ public static class AdminInitializer
             return;
         }
 
+        // Remove unnecessary whitespace from email
         adminEmail = adminEmail.Trim();
 
         // =========================================
@@ -104,7 +111,8 @@ public static class AdminInitializer
         {
             // Do not automatically promote an existing user
             if (!await userManager.IsInRoleAsync(
-                existingUser, adminRole))
+                existingUser,
+                adminRole))
             {
                 throw new InvalidOperationException(
                     "The configured administrator email " +
@@ -130,6 +138,8 @@ public static class AdminInitializer
             LockoutEnabled = true
         };
 
+        // ASP.NET Core Identity securely hashes
+        // the password before saving the account
         var userResult = await userManager.CreateAsync(
             adminUser,
             adminPassword
@@ -183,6 +193,10 @@ public static class AdminInitializer
                 $"Unable to assign Admin role: {errors}"
             );
         }
+
+        // =========================================
+        // ADMINISTRATOR INITIALIZATION COMPLETE
+        // =========================================
 
         logger.LogInformation(
             "Administrator account created successfully."
