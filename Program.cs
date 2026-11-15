@@ -127,11 +127,24 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
     options.SlidingExpiration = true;
 
-    // Return 401 instead of redirecting API requests
+    // Set the administrator login page
+    options.LoginPath = "/admin/login/";
+
+    // Redirect browser visitors to login,
+    // but return HTTP 401 for API requests
     options.Events.OnRedirectToLogin = context =>
     {
-        context.Response.StatusCode =
-            StatusCodes.Status401Unauthorized;
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status401Unauthorized;
+        }
+        else
+        {
+            context.Response.Redirect(
+                "/admin/login/"
+            );
+        }
 
         return Task.CompletedTask;
     };
@@ -152,6 +165,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    // Require authentication and the Admin role
     options.AddPolicy("AdminOnly", policy =>
         policy.RequireAuthenticatedUser()
               .RequireRole("Admin"));
@@ -170,7 +184,7 @@ var app = builder.Build();
 // Redirect HTTP requests to HTTPS first
 app.UseHttpsRedirection();
 
-// Serve the website and static files
+// Serve the public website and static files
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -394,6 +408,50 @@ app.MapPost("/api/admin/login", async (
 })
 .AllowAnonymous()
 .RequireRateLimiting("AdminLoginPolicy");
+
+// =========================================
+// PROTECTED ADMINISTRATOR DASHBOARD
+// =========================================
+
+// GET: Display the administrator dashboard
+app.MapGet("/admin/", (
+    HttpContext httpContext,
+    IWebHostEnvironment environment) =>
+{
+    // Locate the protected dashboard HTML
+    var dashboardPath = Path.Combine(
+        environment.ContentRootPath,
+        "Protected",
+        "Admin",
+        "index.html"
+    );
+
+    // Verify that the dashboard file exists
+    if (!File.Exists(dashboardPath))
+    {
+        return Results.NotFound(new
+        {
+            Message =
+                "Administrator dashboard not found."
+        });
+    }
+
+    // Prevent caching of the protected dashboard
+    httpContext.Response.Headers.CacheControl =
+        "no-store";
+
+    // Return the administrator dashboard
+    return Results.File(
+        dashboardPath,
+        contentType: "text/html"
+    );
+})
+.RequireAuthorization("AdminOnly");
+
+// Protect and redirect the old dashboard URL
+app.MapGet("/admin/index.html", () =>
+    Results.Redirect("/admin/"))
+.RequireAuthorization("AdminOnly");
 
 // =========================================
 // START APPLICATION
