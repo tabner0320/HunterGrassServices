@@ -10,17 +10,15 @@
 // APPLICATION STATE
 // =========================================
 
-// Quotes are loaded from the protected API.
-// No fictional customer records are used.
-
 let customerQuotes = [];
 let selectedQuote = null;
+let savingStatus = false;
 
-// Current QuoteRequest model does not yet
-// contain a persistent Status property.
-// Display all existing records as New.
-
-const DEFAULT_STATUS = "New";
+const ALLOWED_STATUSES = [
+    "New",
+    "Contacted",
+    "Completed"
+];
 
 // =========================================
 // DOM HELPERS
@@ -35,6 +33,21 @@ function setText(id, value) {
 
     if (element) {
         element.textContent = value ?? "";
+    }
+}
+
+function showStatusMessage(message, type = "") {
+    const element = getElement("statusUpdateMessage");
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent = message;
+    element.className = "status-update-message";
+
+    if (type) {
+        element.classList.add(type);
     }
 }
 
@@ -53,7 +66,6 @@ function formatQuoteDate(createdAt) {
         return "Not available";
     }
 
-    // Display dates in the browser's local time.
     return date.toLocaleDateString(undefined, {
         year: "numeric",
         month: "2-digit",
@@ -66,9 +78,6 @@ function formatQuoteDate(createdAt) {
 // =========================================
 
 async function loadCustomerQuotes() {
-    const tableBody = getElement("quotesTable");
-
-    // Show progress before requesting data.
     showTableMessage("Loading customer requests...");
 
     try {
@@ -81,14 +90,15 @@ async function loadCustomerQuotes() {
             }
         );
 
-        // Administrator session has expired.
         if (response.status === 401) {
             window.location.replace("/admin/login/");
             return;
         }
 
-        // Authenticated but not authorized.
         if (response.status === 403) {
+            customerQuotes = [];
+            updateStatistics();
+
             showTableMessage(
                 "You do not have permission to view customer requests."
             );
@@ -109,7 +119,6 @@ async function loadCustomerQuotes() {
             );
         }
 
-        // Convert API records to dashboard records.
         customerQuotes = data.map(quote => ({
             id: quote.id,
             customerName: quote.customerName ?? "",
@@ -119,7 +128,7 @@ async function loadCustomerQuotes() {
             service: quote.service ?? "",
             message: quote.message ?? "",
             createdAt: quote.createdAt,
-            status: DEFAULT_STATUS
+            status: quote.status ?? "New"
         }));
 
         updateStatistics();
@@ -132,7 +141,6 @@ async function loadCustomerQuotes() {
         );
 
         customerQuotes = [];
-
         updateStatistics();
 
         showTableMessage(
@@ -147,6 +155,10 @@ async function loadCustomerQuotes() {
 
 function showTableMessage(message) {
     const tableBody = getElement("quotesTable");
+
+    if (!tableBody) {
+        return;
+    }
 
     tableBody.replaceChildren();
 
@@ -168,10 +180,13 @@ function showTableMessage(message) {
 function updateStatistics() {
     const total = customerQuotes.length;
 
-    // Until database status support is added,
-    // all retrieved requests are treated as New.
-    const newCount = total;
-    const completedCount = 0;
+    const newCount = customerQuotes.filter(
+        quote => quote.status === "New"
+    ).length;
+
+    const completedCount = customerQuotes.filter(
+        quote => quote.status === "Completed"
+    ).length;
 
     setText("totalQuotes", total);
     setText("newQuotes", newCount);
@@ -213,19 +228,17 @@ function displayQuotes() {
     tableBody.replaceChildren();
 
     if (filteredQuotes.length === 0) {
-        const message =
+        showTableMessage(
             customerQuotes.length === 0
                 ? "No customer quote requests have been submitted yet."
-                : "No matching quote requests found.";
-
-        showTableMessage(message);
+                : "No matching quote requests found."
+        );
         return;
     }
 
     filteredQuotes.forEach(quote => {
         const row = document.createElement("tr");
 
-        // Customer name, service, and date.
         const values = [
             quote.customerName,
             quote.service,
@@ -234,19 +247,24 @@ function displayQuotes() {
 
         values.forEach(value => {
             const cell = document.createElement("td");
-
             cell.textContent = value;
             row.appendChild(cell);
         });
 
-        // Status badge.
+        // Display status from SQLite.
         const statusCell = document.createElement("td");
         const badge = document.createElement("span");
 
         badge.textContent = quote.status;
+
+        const statusClass =
+            ALLOWED_STATUSES.includes(quote.status)
+                ? `status-${quote.status.toLowerCase()}`
+                : "status-new";
+
         badge.classList.add(
             "status-badge",
-            "status-new"
+            statusClass
         );
 
         statusCell.appendChild(badge);
@@ -302,22 +320,146 @@ function showQuoteDetails(quote) {
         quote.message || "No additional message provided."
     );
 
-    // Status editing is unavailable until
-    // the database supports persistent statuses.
     const statusSelect = getElement("updateStatus");
     const saveButton = getElement("saveStatus");
 
-    statusSelect.value = DEFAULT_STATUS;
-    statusSelect.disabled = true;
+    statusSelect.value = quote.status;
+    statusSelect.disabled = false;
+    saveButton.disabled = false;
 
-    saveButton.disabled = true;
-
-    setText(
-        "statusUpdateMessage",
-        "Status editing will be available after database status management is added."
+    showStatusMessage(
+        "Select a status and click Save Status."
     );
 
     getElement("quoteDetailsDialog").showModal();
+}
+
+// =========================================
+// SAVE QUOTE STATUS TO SQLITE
+// =========================================
+
+async function saveQuoteStatus() {
+    if (!selectedQuote || savingStatus) {
+        return;
+    }
+
+    const statusSelect = getElement("updateStatus");
+    const saveButton = getElement("saveStatus");
+
+    const requestedStatus = statusSelect.value;
+
+    if (!ALLOWED_STATUSES.includes(requestedStatus)) {
+        showStatusMessage(
+            "Please select a valid status.",
+            "error"
+        );
+        return;
+    }
+
+    if (requestedStatus === selectedQuote.status) {
+        showStatusMessage(
+            "This quote already has the selected status."
+        );
+        return;
+    }
+
+    savingStatus = true;
+
+    statusSelect.disabled = true;
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving...";
+
+    showStatusMessage("Saving status...");
+
+    try {
+        // Obtain a fresh antiforgery token.
+        const token = await getAntiforgeryToken();
+
+        const response = await fetch(
+            `/api/admin/quotes/${selectedQuote.id}/status`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": token
+                },
+                credentials: "same-origin",
+                cache: "no-store",
+                body: JSON.stringify({
+                    status: requestedStatus
+                })
+            }
+        );
+
+        if (response.status === 401) {
+            window.location.replace("/admin/login/");
+            return;
+        }
+
+        if (response.status === 403) {
+            showStatusMessage(
+                "You do not have permission to update quotes.",
+                "error"
+            );
+            return;
+        }
+
+        if (!response.ok) {
+            let message = "Unable to save quote status.";
+
+            try {
+                const errorData = await response.json();
+
+                if (errorData.message) {
+                    message = errorData.message;
+                }
+            } catch {
+                // Keep the default error message.
+            }
+
+            throw new Error(message);
+        }
+
+        const result = await response.json();
+
+        if (!ALLOWED_STATUSES.includes(result.status)) {
+            throw new Error(
+                "The server returned an unexpected status."
+            );
+        }
+
+        // Update the in-memory quote only after
+        // the server confirms successful saving.
+        selectedQuote.status = result.status;
+
+        setText("detailStatus", result.status);
+        statusSelect.value = result.status;
+
+        updateStatistics();
+        displayQuotes();
+
+        showStatusMessage(
+            "Quote status saved successfully.",
+            "success"
+        );
+
+    } catch (error) {
+        console.error(
+            "Unable to update quote status:",
+            error
+        );
+
+        showStatusMessage(
+            error.message || "Unable to save quote status.",
+            "error"
+        );
+
+    } finally {
+        savingStatus = false;
+        statusSelect.disabled = false;
+        saveButton.disabled = false;
+        saveButton.textContent = "Save Status";
+    }
 }
 
 // =========================================
@@ -325,29 +467,18 @@ function showQuoteDetails(quote) {
 // =========================================
 
 function closeQuoteDetails() {
-    getElement("quoteDetailsDialog").close();
-}
-
-// =========================================
-// LOGOUT STATUS MESSAGES
-// =========================================
-
-function displayLogoutMessage(message, type = "") {
-    const element = getElement("logoutMessage");
-
-    element.textContent = message;
-    element.className = "logout-message";
-
-    if (type) {
-        element.classList.add(type);
+    if (savingStatus) {
+        return;
     }
+
+    getElement("quoteDetailsDialog").close();
 }
 
 // =========================================
 // RETRIEVE ANTIFORGERY TOKEN
 // =========================================
 
-async function getLogoutAntiforgeryToken() {
+async function getAntiforgeryToken() {
     const response = await fetch(
         "/api/admin/antiforgery",
         {
@@ -375,6 +506,25 @@ async function getLogoutAntiforgeryToken() {
 }
 
 // =========================================
+// LOGOUT STATUS MESSAGES
+// =========================================
+
+function displayLogoutMessage(message, type = "") {
+    const element = getElement("logoutMessage");
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent = message;
+    element.className = "logout-message";
+
+    if (type) {
+        element.classList.add(type);
+    }
+}
+
+// =========================================
 // SECURE ADMINISTRATOR LOGOUT
 // =========================================
 
@@ -393,8 +543,7 @@ async function handleLogout() {
     let redirecting = false;
 
     try {
-        const token =
-            await getLogoutAntiforgeryToken();
+        const token = await getAntiforgeryToken();
 
         const response = await fetch(
             "/api/admin/logout",
@@ -416,10 +565,7 @@ async function handleLogout() {
 
             redirecting = true;
 
-            window.location.replace(
-                "/admin/login/"
-            );
-
+            window.location.replace("/admin/login/");
             return;
         }
 
@@ -460,8 +606,7 @@ async function handleLogout() {
 // =========================================
 
 function initializeDashboard() {
-    // Prevent demo-only controls from modifying
-    // the appearance of live customer data.
+    // Hide legacy demo controls, if present.
     const resetButton = getElement("resetDemo");
 
     if (resetButton) {
@@ -476,20 +621,22 @@ function initializeDashboard() {
         demoLabel.textContent = "Live Data";
     }
 
-    // Disable status editing until Step 33.
-    getElement("updateStatus").disabled = true;
-    getElement("saveStatus").disabled = true;
-
-    // Status filter.
+    // Status filtering.
     getElement("statusFilter").addEventListener(
         "change",
         displayQuotes
     );
 
-    // Customer search.
+    // Customer searching.
     getElement("searchInput").addEventListener(
         "input",
         displayQuotes
+    );
+
+    // Save quote status.
+    getElement("saveStatus").addEventListener(
+        "click",
+        saveQuoteStatus
     );
 
     // Quote details dialog.
@@ -520,7 +667,7 @@ function initializeDashboard() {
         );
     }
 
-    // Load actual customer records from SQLite.
+    // Load customer quotes from SQLite.
     loadCustomerQuotes();
 }
 

@@ -17,10 +17,10 @@ var builder = WebApplication.CreateBuilder(args);
 // APPLICATION SERVICES
 // =========================================
 
-// Register OpenAPI
+// Register OpenAPI.
 builder.Services.AddOpenApi();
 
-// Register SQLite database
+// Register SQLite database.
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseSqlite(
@@ -40,10 +40,7 @@ builder.Services.AddAntiforgery(options =>
     // authenticated state-changing requests.
     options.HeaderName = "X-CSRF-TOKEN";
 
-    // Configure the antiforgery cookie.
-    options.Cookie.Name =
-        "HunterGrass.Antiforgery";
-
+    options.Cookie.Name = "HunterGrass.Antiforgery";
     options.Cookie.HttpOnly = true;
 
     options.Cookie.SecurePolicy =
@@ -59,7 +56,6 @@ builder.Services.AddAntiforgery(options =>
 
 builder.Services.AddRateLimiter(options =>
 {
-    // Return HTTP 429 when the limit is exceeded.
     options.RejectionStatusCode =
         StatusCodes.Status429TooManyRequests;
 
@@ -69,27 +65,20 @@ builder.Services.AddRateLimiter(options =>
         httpContext =>
         {
             var clientIp =
-                httpContext.Connection
-                    .RemoteIpAddress?
+                httpContext.Connection.RemoteIpAddress?
                     .ToString()
                 ?? "unknown";
 
-            return RateLimitPartition
-                .GetFixedWindowLimiter(
-                    partitionKey: clientIp,
-                    factory: _ =>
-                        new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 5,
-
-                            Window =
-                                TimeSpan.FromMinutes(1),
-
-                            QueueLimit = 0,
-
-                            AutoReplenishment = true
-                        }
-                );
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: clientIp,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }
+            );
         }
     );
 });
@@ -106,13 +95,9 @@ builder.Services
 
         // Password requirements.
         options.Password.RequiredLength = 12;
-
         options.Password.RequireDigit = true;
-
         options.Password.RequireUppercase = true;
-
         options.Password.RequireLowercase = true;
-
         options.Password.RequireNonAlphanumeric = true;
 
         // Account lockout settings.
@@ -141,7 +126,6 @@ builder.Services
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "HunterGrass.Admin";
-
     options.Cookie.HttpOnly = true;
 
     options.Cookie.SecurePolicy =
@@ -150,47 +134,38 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite =
         SameSiteMode.Lax;
 
-    // Administrator session lifetime.
     options.ExpireTimeSpan =
         TimeSpan.FromMinutes(30);
 
     options.SlidingExpiration = true;
 
-    // Administrator login page.
     options.LoginPath = "/admin/login/";
 
-    // Browser requests redirect to login.
     // API requests return HTTP 401.
+    // Browser requests redirect to login.
     options.Events.OnRedirectToLogin = context =>
     {
-        if (
-            context.Request.Path.StartsWithSegments(
-                "/api"
-            )
-        )
+        if (context.Request.Path.StartsWithSegments("/api"))
         {
             context.Response.StatusCode =
                 StatusCodes.Status401Unauthorized;
         }
         else
         {
-            context.Response.Redirect(
-                "/admin/login/"
-            );
+            context.Response.Redirect("/admin/login/");
         }
 
         return Task.CompletedTask;
     };
 
-    // Return HTTP 403 for insufficient permissions.
-    options.Events.OnRedirectToAccessDenied =
-        context =>
-        {
-            context.Response.StatusCode =
-                StatusCodes.Status403Forbidden;
+    // Insufficient permissions return HTTP 403.
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode =
+            StatusCodes.Status403Forbidden;
 
-            return Task.CompletedTask;
-        };
+        return Task.CompletedTask;
+    };
 });
 
 // =========================================
@@ -199,15 +174,11 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(
-        "AdminOnly",
-        policy =>
-        {
-            policy.RequireAuthenticatedUser();
-
-            policy.RequireRole("Admin");
-        }
-    );
+    options.AddPolicy("AdminOnly", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Admin");
+    });
 });
 
 // =========================================
@@ -220,9 +191,7 @@ var app = builder.Build();
 // INITIALIZE ADMINISTRATOR ROLE
 // =========================================
 
-await AdminInitializer.InitializeAsync(
-    app.Services
-);
+await AdminInitializer.InitializeAsync(app.Services);
 
 // =========================================
 // APPLICATION MIDDLEWARE
@@ -231,9 +200,8 @@ await AdminInitializer.InitializeAsync(
 // Redirect HTTP traffic to HTTPS.
 app.UseHttpsRedirection();
 
-// Serve public website and static assets.
+// Serve the public website and static assets.
 app.UseDefaultFiles();
-
 app.UseStaticFiles();
 
 // Enable OpenAPI in Development only.
@@ -250,7 +218,6 @@ app.UseRateLimiter();
 
 // Authenticate before authorizing.
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 // =========================================
@@ -263,8 +230,7 @@ app.MapPost("/api/quotes", async (
     AppDbContext db) =>
 {
     // Validate customer information.
-    var validationResults =
-        new List<ValidationResult>();
+    var validationResults = new List<ValidationResult>();
 
     var isValid = Validator.TryValidateObject(
         request,
@@ -283,8 +249,9 @@ app.MapPost("/api/quotes", async (
     }
 
     // Set server-generated values.
+    // Customers cannot choose the quote status.
     request.Id = 0;
-
+    request.Status = "New";
     request.CreatedAt = DateTime.UtcNow;
 
     // Save the quote request to SQLite.
@@ -298,9 +265,7 @@ app.MapPost("/api/quotes", async (
         new
         {
             request.Id,
-
-            Message =
-                "Quote request saved successfully."
+            Message = "Quote request saved successfully."
         }
     );
 });
@@ -323,17 +288,123 @@ app.MapGet("/api/admin/quotes", async (
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Retrieve quotes without EF change tracking.
-    // Newest customer requests appear first.
+    // Retrieve newest quotes first.
     var quotes = await db.QuoteRequests
         .AsNoTracking()
-        .OrderByDescending(
-            quote => quote.CreatedAt
-        )
+        .OrderByDescending(quote => quote.CreatedAt)
         .ToListAsync();
 
-    // Return quote requests as JSON.
     return Results.Ok(quotes);
+})
+.RequireAuthorization("AdminOnly");
+
+// =========================================
+// ADMINISTRATOR QUOTE STATUS UPDATE API
+// =========================================
+
+// PUT: Update the status of an existing quote.
+//
+// Allowed statuses:
+// New, Contacted, Completed.
+//
+// SECURITY:
+// Requires HTTPS, Admin role and a valid
+// antiforgery request token.
+
+app.MapPut("/api/admin/quotes/{id:int}/status", async (
+    int id,
+    UpdateQuoteStatusRequest request,
+    AppDbContext db,
+    IAntiforgery antiforgery,
+    HttpContext httpContext) =>
+{
+    // Require HTTPS.
+    if (!httpContext.Request.IsHttps)
+    {
+        return Results.BadRequest(new
+        {
+            Message = "HTTPS is required."
+        });
+    }
+
+    // Prevent caching of the response.
+    httpContext.Response.Headers.CacheControl =
+        "no-store";
+
+    // Validate antiforgery security token.
+    try
+    {
+        await antiforgery.ValidateRequestAsync(
+            httpContext
+        );
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest(new
+        {
+            Message = "Invalid or missing security token."
+        });
+    }
+
+    // Accept only supported quote statuses.
+    string[] allowedStatuses =
+    {
+        "New",
+        "Contacted",
+        "Completed"
+    };
+
+    var requestedStatus = request.Status?.Trim();
+
+    if (string.IsNullOrWhiteSpace(requestedStatus))
+    {
+        return Results.BadRequest(new
+        {
+            Message = "Quote status is required."
+        });
+    }
+
+    var normalizedStatus = allowedStatuses
+        .FirstOrDefault(status =>
+            status.Equals(
+                requestedStatus,
+                StringComparison.OrdinalIgnoreCase
+            )
+        );
+
+    if (normalizedStatus is null)
+    {
+        return Results.BadRequest(new
+        {
+            Message =
+                "Status must be New, Contacted, or Completed."
+        });
+    }
+
+    // Find the quote request in SQLite.
+    var quote = await db.QuoteRequests.FindAsync(id);
+
+    if (quote is null)
+    {
+        return Results.NotFound(new
+        {
+            Message = "Quote request not found."
+        });
+    }
+
+    // Update the tracked database entity.
+    quote.Status = normalizedStatus;
+
+    // Persist the status change to SQLite.
+    await db.SaveChangesAsync();
+
+    // Return the updated status.
+    return Results.Ok(new
+    {
+        quote.Id,
+        quote.Status,
+        Message = "Quote status updated successfully."
+    });
 })
 .RequireAuthorization("AdminOnly");
 
@@ -364,7 +435,6 @@ app.MapGet("/api/admin/antiforgery", (
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Return the request token.
     return Results.Ok(new
     {
         Token = tokens.RequestToken
@@ -405,14 +475,12 @@ app.MapPost("/api/admin/login", async (
     {
         return Results.BadRequest(new
         {
-            Message =
-                "Invalid or missing security token."
+            Message = "Invalid or missing security token."
         });
     }
 
     // Validate login request.
-    var validationResults =
-        new List<ValidationResult>();
+    var validationResults = new List<ValidationResult>();
 
     var isValid = Validator.TryValidateObject(
         request,
@@ -435,7 +503,6 @@ app.MapPost("/api/admin/login", async (
         request.Email.Trim()
     );
 
-    // Reject unknown accounts.
     if (user is null)
     {
         return Results.Json(
@@ -475,7 +542,6 @@ app.MapPost("/api/admin/login", async (
             lockoutOnFailure: true
         );
 
-    // Reject unsuccessful login attempts.
     if (!result.Succeeded)
     {
         return Results.Json(
@@ -488,11 +554,9 @@ app.MapPost("/api/admin/login", async (
         );
     }
 
-    // Return successful login response.
     return Results.Ok(new
     {
-        Message =
-            "Administrator login successful."
+        Message = "Administrator login successful."
     });
 })
 .AllowAnonymous()
@@ -529,23 +593,20 @@ app.MapPost("/api/admin/logout", async (
     {
         return Results.BadRequest(new
         {
-            Message =
-                "Invalid or missing security token."
+            Message = "Invalid or missing security token."
         });
     }
 
-    // Clear the administrator authentication cookie.
+    // Clear administrator authentication cookie.
     await signInManager.SignOutAsync();
 
-    // Prevent logout response caching.
+    // Prevent caching.
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Return successful logout response.
     return Results.Ok(new
     {
-        Message =
-            "Administrator logout successful."
+        Message = "Administrator logout successful."
     });
 })
 .RequireAuthorization("AdminOnly");
@@ -559,7 +620,7 @@ app.MapGet("/admin/", (
     HttpContext httpContext,
     IWebHostEnvironment environment) =>
 {
-    // Locate the protected dashboard HTML.
+    // Locate protected dashboard HTML.
     var dashboardPath = Path.Combine(
         environment.ContentRootPath,
         "Protected",
@@ -567,13 +628,11 @@ app.MapGet("/admin/", (
         "index.html"
     );
 
-    // Check whether the file exists.
     if (!File.Exists(dashboardPath))
     {
         return Results.NotFound(new
         {
-            Message =
-                "Administrator dashboard not found."
+            Message = "Administrator dashboard not found."
         });
     }
 
@@ -581,7 +640,6 @@ app.MapGet("/admin/", (
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Return the protected dashboard.
     return Results.File(
         dashboardPath,
         contentType: "text/html"
