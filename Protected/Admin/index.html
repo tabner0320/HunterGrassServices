@@ -1,22 +1,37 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <title>Admin Dashboard | Hunter Grass Services</title>
+    <title>
+        Admin Dashboard | Hunter Grass Services
+    </title>
 
     <!-- Website Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link
+        rel="icon"
+        type="image/svg+xml"
+        href="/favicon.svg"
+    >
 
     <!-- Dashboard Stylesheet -->
-    <link rel="stylesheet" href="/admin/admin.css">
+    <link
+        rel="stylesheet"
+        href="/admin/admin.css"
+    >
 
     <!-- Dashboard JavaScript -->
-    <script src="/admin/admin.js" defer></script>
+    <script
+        src="/admin/admin.js"
+        defer
+    ></script>
 </head>
 
 <body>
@@ -39,11 +54,17 @@
 
             <nav aria-label="Admin navigation">
 
-                <a href="#dashboard">Dashboard</a>
+                <a href="#dashboard">
+                    Dashboard
+                </a>
 
-                <a href="#quotes">Quote Requests</a>
+                <a href="#quotes">
+                    Quote Requests
+                </a>
 
-                <a href="/">View Website</a>
+                <a href="/">
+                    View Website
+                </a>
 
             </nav>
 
@@ -53,9 +74,14 @@
              MAIN DASHBOARD
              ================================= -->
 
-        <main class="main-content" id="dashboard">
+        <main
+            class="main-content"
+            id="dashboard"
+        >
 
-            <!-- Dashboard Header -->
+            <!-- =================================
+                 DASHBOARD HEADER
+                 ================================= -->
 
             <header class="dashboard-header">
 
@@ -63,7 +89,9 @@
 
                     <h1>Admin Dashboard</h1>
 
-                    <p>Manage your lawn care business</p>
+                    <p>
+                        Manage your lawn care business
+                    </p>
 
                 </div>
 
@@ -71,27 +99,19 @@
 
                 <div class="header-actions">
 
-                    <!-- Demo Mode Label -->
+                    <!-- Live Database Indicator -->
 
                     <span class="demo-label">
-                        Demo Mode
+                        Live Data
                     </span>
 
-                    <!-- Reset Demo Button -->
-
-                    <button
-                        type="button"
-                        id="resetDemo"
-                        class="reset-demo-button">
-                        Reset Demo
-                    </button>
-
-                    <!-- Administrator Sign Out Button -->
+                    <!-- Administrator Sign Out -->
 
                     <button
                         type="button"
                         id="logoutButton"
-                        class="logout-button">
+                        class="logout-button"
+                    >
                         Sign Out
                     </button>
 
@@ -107,8 +127,8 @@
                 id="logoutMessage"
                 class="logout-message"
                 role="status"
-                aria-live="polite">
-            </p>
+                aria-live="polite"
+            ></p>
 
             <!-- =================================
                  DASHBOARD STATISTICS
@@ -116,9 +136,10 @@
 
             <section
                 class="stats"
-                aria-label="Dashboard statistics">
+                aria-label="Dashboard statistics"
+            >
 
-                <!-- Total Quotes -->
+                <!-- Total Quote Requests -->
 
                 <div class="stat-card">
 
@@ -128,7 +149,7 @@
 
                 </div>
 
-                <!-- New Requests -->
+                <!-- New Quote Requests -->
 
                 <div class="stat-card">
 
@@ -138,7 +159,7 @@
 
                 </div>
 
-                <!-- Completed Quotes -->
+                <!-- Completed Quote Requests -->
 
                 <div class="stat-card">
 
@@ -154,12 +175,17 @@
                  CUSTOMER QUOTE REQUESTS
                  ================================= -->
 
-            <section class="quotes-section" id="quotes">
+            <section
+                class="quotes-section"
+                id="quotes"
+            >
 
                 <h2>Customer Quote Requests</h2>
 
                 <p>
-                    Sample requests for dashboard development.
+                    View and manage customer quote
+                    requests submitted through
+                    your website.
                 </p>
 
                 <!-- =============================
@@ -203,7 +229,9 @@
                     <input
                         type="search"
                         id="searchInput"
-                        placeholder="Search customer or service...">
+                        placeholder="Search customer or service..."
+                        autocomplete="off"
+                    >
 
                 </div>
 
@@ -243,12 +271,20 @@
 
                         </thead>
 
+                        <!-- JavaScript Inserts Quotes -->
+
                         <tbody id="quotesTable">
 
-                            <!--
-                                JavaScript dynamically inserts
-                                customer quote request rows.
-                            -->
+                            <tr>
+
+                                <td
+                                    colspan="5"
+                                    class="no-results"
+                                >
+                                    Loading customer requests...
+                                </td>
+
+                            </tr>
 
                         </tbody>
 
@@ -269,7 +305,8 @@
     <dialog
         id="quoteDetailsDialog"
         class="quote-dialog"
-        aria-labelledby="detailsTitle">
+        aria-labelledby="detailsTitle"
+    >
 
         <!-- =================================
              POPUP HEADER
@@ -281,11 +318,14 @@
                 Quote Request Details
             </h2>
 
+            <!-- Close Popup Button -->
+
             <button
                 type="button"
                 id="closeDetails"
                 class="close-button"
-                aria-label="Close quote details">
+                aria-label="Close quote details"
+            >
                 &times;
             </button>
 
@@ -297,10 +337,11 @@
 
         <div class="dialog-content">
 
-            <!-- Quote ID -->
+            <!-- Quote Request ID -->
 
             <p>
                 <strong>Quote ID:</strong>
+
                 <span id="detailId"></span>
             </p>
 
@@ -308,6 +349,7 @@
 
             <p>
                 <strong>Customer:</strong>
+
                 <span id="detailCustomer"></span>
             </p>
 
@@ -315,6 +357,7 @@
 
             <p>
                 <strong>Email:</strong>
+
                 <span id="detailEmail"></span>
             </p>
 
@@ -322,6 +365,7 @@
 
             <p>
                 <strong>Phone:</strong>
+
                 <span id="detailPhone"></span>
             </p>
 
@@ -329,6 +373,7 @@
 
             <p>
                 <strong>Address:</strong>
+
                 <span id="detailAddress"></span>
             </p>
 
@@ -336,6 +381,7 @@
 
             <p>
                 <strong>Service:</strong>
+
                 <span id="detailService"></span>
             </p>
 
@@ -343,6 +389,7 @@
 
             <p>
                 <strong>Date:</strong>
+
                 <span id="detailDate"></span>
             </p>
 
@@ -350,6 +397,7 @@
 
             <p>
                 <strong>Status:</strong>
+
                 <span id="detailStatus"></span>
             </p>
 
@@ -363,7 +411,12 @@
                     Update Quote Status:
                 </label>
 
-                <select id="updateStatus">
+                <!-- Disabled Until Step 33 -->
+
+                <select
+                    id="updateStatus"
+                    disabled
+                >
 
                     <option value="New">
                         New
@@ -383,21 +436,29 @@
 
                 <button
                     type="button"
-                    id="saveStatus">
+                    id="saveStatus"
+                    disabled
+                >
                     Save Status
                 </button>
 
-                <!-- Status Update Confirmation -->
+                <!-- Status Update Message -->
 
                 <p
                     id="statusUpdateMessage"
                     role="status"
-                    aria-live="polite">
+                    aria-live="polite"
+                >
+                    Status editing will be available
+                    after database status management
+                    is added.
                 </p>
 
             </div>
 
-            <!-- Customer Message -->
+            <!-- =================================
+                 CUSTOMER MESSAGE
+                 ================================= -->
 
             <p>
                 <strong>Customer Message:</strong>
@@ -415,7 +476,8 @@
 
             <button
                 type="button"
-                id="closeDetailsFooter">
+                id="closeDetailsFooter"
+            >
                 Close Details
             </button>
 
@@ -424,4 +486,5 @@
     </dialog>
 
 </body>
+
 </html>

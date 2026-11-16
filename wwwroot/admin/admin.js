@@ -3,558 +3,351 @@
 
 // =========================================
 // HUNTER GRASS SERVICES ADMIN DASHBOARD
-// DEMO DATA ONLY
+// LIVE SQLITE QUOTE REQUESTS
 // =========================================
 
 // =========================================
-// CONFIGURATION
+// APPLICATION STATE
 // =========================================
 
-const STORAGE_KEY = "hunterGrassDemoStatuses";
+// Quotes are loaded from the protected API.
+// No fictional customer records are used.
 
-const validStatuses = [
-    "New",
-    "Contacted",
-    "Completed"
-];
-
-// =========================================
-// ORIGINAL SAMPLE QUOTE REQUESTS
-// =========================================
-
-const originalQuotes = [
-    {
-        id: 1,
-        customerName: "John Test",
-        email: "john@example.com",
-        phone: "555-0100",
-        address: "123 Example Street",
-        service: "Lawn Mowing",
-        date: "2026-11-10",
-        status: "New",
-        message: "I would like a quote for weekly lawn mowing."
-    },
-    {
-        id: 2,
-        customerName: "Jane Sample",
-        email: "jane@example.com",
-        phone: "555-0101",
-        address: "456 Sample Avenue",
-        service: "Mulching",
-        date: "2026-11-09",
-        status: "Completed",
-        message: "I need fresh mulch around my flower beds."
-    },
-    {
-        id: 3,
-        customerName: "Alex Demo",
-        email: "alex@example.com",
-        phone: "555-0102",
-        address: "789 Demo Lane",
-        service: "Seasonal Cleanup",
-        date: "2026-11-08",
-        status: "New",
-        message: "I need help removing leaves from my yard."
-    },
-    {
-        id: 4,
-        customerName: "Taylor Example",
-        email: "taylor@example.com",
-        phone: "555-0103",
-        address: "321 Example Drive",
-        service: "Edging & Trimming",
-        date: "2026-11-07",
-        status: "Contacted",
-        message: "I would like edging along my driveway."
-    }
-];
-
-// Working copy of sample quotes
-
-let sampleQuotes = originalQuotes.map(quote => ({
-    ...quote
-}));
-
-// Currently selected quote
-
+let customerQuotes = [];
 let selectedQuote = null;
 
+// Current QuoteRequest model does not yet
+// contain a persistent Status property.
+// Display all existing records as New.
+
+const DEFAULT_STATUS = "New";
 
 // =========================================
-// LOAD SAVED DEMO STATUSES
+// DOM HELPERS
 // =========================================
 
-function loadSavedStatuses() {
+function getElement(id) {
+    return document.getElementById(id);
+}
 
-    try {
+function setText(id, value) {
+    const element = getElement(id);
 
-        const savedData =
-            localStorage.getItem(STORAGE_KEY);
-
-        if (!savedData) {
-            return;
-        }
-
-        const savedStatuses =
-            JSON.parse(savedData);
-
-        if (
-            !savedStatuses ||
-            typeof savedStatuses !== "object" ||
-            Array.isArray(savedStatuses)
-        ) {
-            return;
-        }
-
-        sampleQuotes.forEach(quote => {
-
-            const savedStatus =
-                savedStatuses[quote.id];
-
-            if (validStatuses.includes(savedStatus)) {
-
-                quote.status = savedStatus;
-            }
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Unable to load saved demo statuses:",
-            error
-        );
+    if (element) {
+        element.textContent = value ?? "";
     }
 }
 
-
 // =========================================
-// SAVE DEMO STATUSES
+// DATE FORMATTING
 // =========================================
 
-function saveStatusesToStorage() {
+function formatQuoteDate(createdAt) {
+    if (!createdAt) {
+        return "Not available";
+    }
 
-    const statuses = {};
+    const date = new Date(createdAt);
 
-    sampleQuotes.forEach(quote => {
+    if (Number.isNaN(date.getTime())) {
+        return "Not available";
+    }
 
-        statuses[quote.id] = quote.status;
+    // Display dates in the browser's local time.
+    return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
     });
+}
+
+// =========================================
+// LOAD REAL CUSTOMER QUOTES
+// =========================================
+
+async function loadCustomerQuotes() {
+    const tableBody = getElement("quotesTable");
+
+    // Show progress before requesting data.
+    showTableMessage("Loading customer requests...");
 
     try {
-
-        localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify(statuses)
+        const response = await fetch(
+            "/api/admin/quotes",
+            {
+                method: "GET",
+                credentials: "same-origin",
+                cache: "no-store"
+            }
         );
 
-        return true;
+        // Administrator session has expired.
+        if (response.status === 401) {
+            window.location.replace("/admin/login/");
+            return;
+        }
+
+        // Authenticated but not authorized.
+        if (response.status === 403) {
+            showTableMessage(
+                "You do not have permission to view customer requests."
+            );
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                `Unable to load quotes. HTTP ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+            throw new Error(
+                "Unexpected response from the quotes API."
+            );
+        }
+
+        // Convert API records to dashboard records.
+        customerQuotes = data.map(quote => ({
+            id: quote.id,
+            customerName: quote.customerName ?? "",
+            email: quote.email ?? "",
+            phone: quote.phone ?? "",
+            address: quote.address ?? "",
+            service: quote.service ?? "",
+            message: quote.message ?? "",
+            createdAt: quote.createdAt,
+            status: DEFAULT_STATUS
+        }));
+
+        updateStatistics();
+        displayQuotes();
 
     } catch (error) {
-
         console.error(
-            "Unable to save demo statuses:",
+            "Unable to load customer quotes:",
             error
         );
 
-        return false;
+        customerQuotes = [];
+
+        updateStatistics();
+
+        showTableMessage(
+            "Unable to load customer requests. Please refresh the page."
+        );
     }
 }
 
+// =========================================
+// TABLE STATUS MESSAGES
+// =========================================
+
+function showTableMessage(message) {
+    const tableBody = getElement("quotesTable");
+
+    tableBody.replaceChildren();
+
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+
+    cell.colSpan = 5;
+    cell.classList.add("no-results");
+    cell.textContent = message;
+
+    row.appendChild(cell);
+    tableBody.appendChild(row);
+}
 
 // =========================================
-// UPDATE DASHBOARD STATISTICS
+// DASHBOARD STATISTICS
 // =========================================
 
 function updateStatistics() {
+    const total = customerQuotes.length;
 
-    const totalQuotes = sampleQuotes.length;
+    // Until database status support is added,
+    // all retrieved requests are treated as New.
+    const newCount = total;
+    const completedCount = 0;
 
-    const newQuotes = sampleQuotes.filter(
-        quote => quote.status === "New"
-    ).length;
-
-    const completedQuotes = sampleQuotes.filter(
-        quote => quote.status === "Completed"
-    ).length;
-
-    document.getElementById("totalQuotes").textContent =
-        totalQuotes;
-
-    document.getElementById("newQuotes").textContent =
-        newQuotes;
-
-    document.getElementById("completedQuotes").textContent =
-        completedQuotes;
+    setText("totalQuotes", total);
+    setText("newQuotes", newCount);
+    setText("completedQuotes", completedCount);
 }
 
-
 // =========================================
-// DISPLAY QUOTE REQUESTS
+// DISPLAY CUSTOMER QUOTES
 // =========================================
 
 function displayQuotes() {
+    const tableBody = getElement("quotesTable");
 
-    const tableBody =
-        document.getElementById("quotesTable");
-
-    const statusFilter =
-        document.getElementById("statusFilter");
-
-    const searchInput =
-        document.getElementById("searchInput");
-
-    const selectedStatus = statusFilter.value;
+    const selectedStatus =
+        getElement("statusFilter").value;
 
     const searchTerm =
-        searchInput.value.trim().toLowerCase();
+        getElement("searchInput")
+            .value
+            .trim()
+            .toLowerCase();
 
-    // Filter by status and customer search
-
-    const filteredQuotes = sampleQuotes.filter(quote => {
-
+    const filteredQuotes = customerQuotes.filter(quote => {
         const matchesStatus =
             selectedStatus === "All" ||
             quote.status === selectedStatus;
 
         const matchesSearch =
-            quote.customerName.toLowerCase()
+            quote.customerName
+                .toLowerCase()
                 .includes(searchTerm) ||
-            quote.service.toLowerCase()
+            quote.service
+                .toLowerCase()
                 .includes(searchTerm);
 
         return matchesStatus && matchesSearch;
     });
 
-    // Clear existing table rows
-
     tableBody.replaceChildren();
 
-    // Display message when no quotes match
-
     if (filteredQuotes.length === 0) {
+        const message =
+            customerQuotes.length === 0
+                ? "No customer quote requests have been submitted yet."
+                : "No matching quote requests found.";
 
-        const row = document.createElement("tr");
-
-        const cell = document.createElement("td");
-
-        cell.colSpan = 5;
-
-        cell.classList.add("no-results");
-
-        cell.textContent =
-            "No matching quote requests found.";
-
-        row.appendChild(cell);
-
-        tableBody.appendChild(row);
-
+        showTableMessage(message);
         return;
     }
 
-    // Create table rows
-
     filteredQuotes.forEach(quote => {
-
         const row = document.createElement("tr");
 
-        // Customer, Service, and Date
-
+        // Customer name, service, and date.
         const values = [
             quote.customerName,
             quote.service,
-            quote.date
+            formatQuoteDate(quote.createdAt)
         ];
 
         values.forEach(value => {
-
             const cell = document.createElement("td");
 
             cell.textContent = value;
-
             row.appendChild(cell);
         });
 
-        // Status Badge
+        // Status badge.
+        const statusCell = document.createElement("td");
+        const badge = document.createElement("span");
 
-        const statusCell =
-            document.createElement("td");
-
-        const statusBadge =
-            document.createElement("span");
-
-        statusBadge.textContent = quote.status;
-
-        statusBadge.classList.add(
+        badge.textContent = quote.status;
+        badge.classList.add(
             "status-badge",
-            `status-${quote.status.toLowerCase()}`
+            "status-new"
         );
 
-        statusCell.appendChild(statusBadge);
-
+        statusCell.appendChild(badge);
         row.appendChild(statusCell);
 
-        // View Details Button
+        // View Details button.
+        const actionsCell = document.createElement("td");
+        const button = document.createElement("button");
 
-        const actionsCell =
-            document.createElement("td");
+        button.type = "button";
+        button.textContent = "View Details";
+        button.classList.add("view-details-button");
 
-        const viewButton =
-            document.createElement("button");
-
-        viewButton.type = "button";
-
-        viewButton.textContent = "View Details";
-
-        viewButton.classList.add(
-            "view-details-button"
-        );
-
-        viewButton.setAttribute(
+        button.setAttribute(
             "aria-label",
             `View details for ${quote.customerName}`
         );
 
-        viewButton.addEventListener("click", () => {
-
+        button.addEventListener("click", () => {
             showQuoteDetails(quote);
         });
 
-        actionsCell.appendChild(viewButton);
-
+        actionsCell.appendChild(button);
         row.appendChild(actionsCell);
-
-        // Add completed row to table
 
         tableBody.appendChild(row);
     });
 }
 
-
 // =========================================
-// SHOW QUOTE DETAILS POPUP
+// VIEW CUSTOMER QUOTE DETAILS
 // =========================================
 
 function showQuoteDetails(quote) {
-
     selectedQuote = quote;
 
-    document.getElementById("detailId").textContent =
-        quote.id;
+    setText("detailId", quote.id);
+    setText("detailCustomer", quote.customerName);
+    setText("detailEmail", quote.email);
+    setText("detailPhone", quote.phone);
+    setText("detailAddress", quote.address);
+    setText("detailService", quote.service);
 
-    document.getElementById("detailCustomer").textContent =
-        quote.customerName;
-
-    document.getElementById("detailEmail").textContent =
-        quote.email;
-
-    document.getElementById("detailPhone").textContent =
-        quote.phone;
-
-    document.getElementById("detailAddress").textContent =
-        quote.address;
-
-    document.getElementById("detailService").textContent =
-        quote.service;
-
-    document.getElementById("detailDate").textContent =
-        quote.date;
-
-    document.getElementById("detailStatus").textContent =
-        quote.status;
-
-    document.getElementById("detailMessage").textContent =
-        quote.message;
-
-    // Set dropdown to current status
-
-    document.getElementById("updateStatus").value =
-        quote.status;
-
-    // Clear previous confirmation message
-
-    document.getElementById("statusUpdateMessage")
-        .textContent = "";
-
-    // Open popup
-
-    const dialog =
-        document.getElementById("quoteDetailsDialog");
-
-    dialog.showModal();
-}
-
-
-// =========================================
-// UPDATE QUOTE STATUS
-// =========================================
-
-function saveQuoteStatus() {
-
-    if (!selectedQuote) {
-        return;
-    }
-
-    const newStatus =
-        document.getElementById("updateStatus").value;
-
-    const message =
-        document.getElementById("statusUpdateMessage");
-
-    // Validate selected status
-
-    if (!validStatuses.includes(newStatus)) {
-
-        message.textContent =
-            "Please select a valid status.";
-
-        return;
-    }
-
-    // Check whether status changed
-
-    if (selectedQuote.status === newStatus) {
-
-        message.textContent =
-            "No changes were made.";
-
-        return;
-    }
-
-    // Update selected quote
-
-    selectedQuote.status = newStatus;
-
-    // Save to browser storage
-
-    const saved = saveStatusesToStorage();
-
-    // Update popup status
-
-    document.getElementById("detailStatus").textContent =
-        newStatus;
-
-    // Refresh dashboard
-
-    updateStatistics();
-
-    displayQuotes();
-
-    // Display confirmation
-
-    if (saved) {
-
-        message.textContent =
-            `Quote status updated to ${newStatus} and saved.`;
-
-    } else {
-
-        message.textContent =
-            "Status updated, but browser storage is unavailable.";
-    }
-}
-
-
-// =========================================
-// RESET DEMO DATA
-// =========================================
-
-function resetDemoData() {
-
-    const confirmed = window.confirm(
-        "Reset all demo quote statuses to their original values?"
+    setText(
+        "detailDate",
+        formatQuoteDate(quote.createdAt)
     );
 
-    if (!confirmed) {
-        return;
-    }
+    setText("detailStatus", quote.status);
 
-    try {
-
-        localStorage.removeItem(STORAGE_KEY);
-
-    } catch (error) {
-
-        console.error(
-            "Unable to clear saved demo statuses:",
-            error
-        );
-
-        window.alert(
-            "Unable to reset browser storage."
-        );
-
-        return;
-    }
-
-    // Restore original sample quotes
-
-    sampleQuotes = originalQuotes.map(quote => ({
-        ...quote
-    }));
-
-    selectedQuote = null;
-
-    // Reset filter and search
-
-    document.getElementById("statusFilter").value =
-        "All";
-
-    document.getElementById("searchInput").value =
-        "";
-
-    // Refresh dashboard
-
-    updateStatistics();
-
-    displayQuotes();
-
-    window.alert(
-        "Demo data has been reset successfully."
+    setText(
+        "detailMessage",
+        quote.message || "No additional message provided."
     );
+
+    // Status editing is unavailable until
+    // the database supports persistent statuses.
+    const statusSelect = getElement("updateStatus");
+    const saveButton = getElement("saveStatus");
+
+    statusSelect.value = DEFAULT_STATUS;
+    statusSelect.disabled = true;
+
+    saveButton.disabled = true;
+
+    setText(
+        "statusUpdateMessage",
+        "Status editing will be available after database status management is added."
+    );
+
+    getElement("quoteDetailsDialog").showModal();
 }
 
-
 // =========================================
-// CLOSE QUOTE DETAILS POPUP
+// CLOSE QUOTE DETAILS
 // =========================================
 
 function closeQuoteDetails() {
-
-    const dialog =
-        document.getElementById("quoteDetailsDialog");
-
-    dialog.close();
+    getElement("quoteDetailsDialog").close();
 }
 
-
 // =========================================
-// ADMINISTRATOR LOGOUT
+// LOGOUT STATUS MESSAGES
 // =========================================
-
-// Display logout status messages
 
 function displayLogoutMessage(message, type = "") {
+    const element = getElement("logoutMessage");
 
-    const logoutMessage =
-        document.getElementById("logoutMessage");
-
-    logoutMessage.textContent = message;
-
-    logoutMessage.className = "logout-message";
+    element.textContent = message;
+    element.className = "logout-message";
 
     if (type) {
-
-        logoutMessage.classList.add(type);
+        element.classList.add(type);
     }
 }
-
 
 // =========================================
 // RETRIEVE ANTIFORGERY TOKEN
 // =========================================
 
 async function getLogoutAntiforgeryToken() {
-
     const response = await fetch(
         "/api/admin/antiforgery",
         {
@@ -565,7 +358,6 @@ async function getLogoutAntiforgeryToken() {
     );
 
     if (!response.ok) {
-
         throw new Error(
             "Unable to retrieve security token."
         );
@@ -574,7 +366,6 @@ async function getLogoutAntiforgeryToken() {
     const data = await response.json();
 
     if (!data.token) {
-
         throw new Error(
             "Security token was not received."
         );
@@ -583,24 +374,18 @@ async function getLogoutAntiforgeryToken() {
     return data.token;
 }
 
-
 // =========================================
-// SIGN OUT ADMINISTRATOR
+// SECURE ADMINISTRATOR LOGOUT
 // =========================================
 
 async function handleLogout() {
-
-    const logoutButton =
-        document.getElementById("logoutButton");
-
-    // Prevent duplicate logout requests
+    const logoutButton = getElement("logoutButton");
 
     if (logoutButton.disabled) {
         return;
     }
 
     logoutButton.disabled = true;
-
     logoutButton.textContent = "Signing Out...";
 
     displayLogoutMessage("Signing out...");
@@ -608,43 +393,28 @@ async function handleLogout() {
     let redirecting = false;
 
     try {
-
-        // Retrieve fresh antiforgery token
-
         const token =
             await getLogoutAntiforgeryToken();
-
-        // Send logout request
 
         const response = await fetch(
             "/api/admin/logout",
             {
                 method: "POST",
-
                 headers: {
                     "X-CSRF-TOKEN": token
                 },
-
                 credentials: "same-origin",
                 cache: "no-store"
             }
         );
 
-        // Successful logout or expired session
-
-        if (
-            response.ok ||
-            response.status === 401
-        ) {
-
+        if (response.ok || response.status === 401) {
             displayLogoutMessage(
                 "Signed out successfully.",
                 "success"
             );
 
             redirecting = true;
-
-            // Replace dashboard in browser history
 
             window.location.replace(
                 "/admin/login/"
@@ -653,19 +423,13 @@ async function handleLogout() {
             return;
         }
 
-        // Invalid antiforgery token
-
         if (response.status === 400) {
-
             displayLogoutMessage(
                 "Security validation failed. Please try again.",
                 "error"
             );
-
             return;
         }
-
-        // Other unsuccessful responses
 
         displayLogoutMessage(
             "Unable to sign out. Please try again.",
@@ -673,7 +437,6 @@ async function handleLogout() {
         );
 
     } catch (error) {
-
         console.error(
             "Administrator logout error:",
             error
@@ -685,110 +448,81 @@ async function handleLogout() {
         );
 
     } finally {
-
-        // Restore button if logout was unsuccessful
-
         if (!redirecting) {
-
             logoutButton.disabled = false;
-
             logoutButton.textContent = "Sign Out";
         }
     }
 }
 
-
 // =========================================
-// INITIALIZE DASHBOARD
+// INITIALIZE LIVE DASHBOARD
 // =========================================
 
 function initializeDashboard() {
-
-    // Restore saved demo statuses
-
-    loadSavedStatuses();
-
-    // Display dashboard
-
-    updateStatistics();
-
-    displayQuotes();
-
-    // Status Filter
-
-    document.getElementById("statusFilter")
-        .addEventListener(
-            "change",
-            displayQuotes
-        );
-
-    // Customer Search
-
-    document.getElementById("searchInput")
-        .addEventListener(
-            "input",
-            displayQuotes
-        );
-
-    // Save Quote Status
-
-    document.getElementById("saveStatus")
-        .addEventListener(
-            "click",
-            saveQuoteStatus
-        );
-
-    // Close Popup - X Button
-
-    document.getElementById("closeDetails")
-        .addEventListener(
-            "click",
-            closeQuoteDetails
-        );
-
-    // Close Popup - Footer Button
-
-    document.getElementById("closeDetailsFooter")
-        .addEventListener(
-            "click",
-            closeQuoteDetails
-        );
-
-    // Reset selected quote when popup closes
-
-    document.getElementById("quoteDetailsDialog")
-        .addEventListener("close", () => {
-
-            selectedQuote = null;
-        });
-
-    // Reset Demo Button
-
-    const resetButton =
-        document.getElementById("resetDemo");
+    // Prevent demo-only controls from modifying
+    // the appearance of live customer data.
+    const resetButton = getElement("resetDemo");
 
     if (resetButton) {
-
-        resetButton.addEventListener(
-            "click",
-            resetDemoData
-        );
+        resetButton.hidden = true;
+        resetButton.disabled = true;
     }
 
-    // Administrator Sign Out Button
+    const demoLabel =
+        document.querySelector(".demo-label");
 
-    const logoutButton =
-        document.getElementById("logoutButton");
+    if (demoLabel) {
+        demoLabel.textContent = "Live Data";
+    }
+
+    // Disable status editing until Step 33.
+    getElement("updateStatus").disabled = true;
+    getElement("saveStatus").disabled = true;
+
+    // Status filter.
+    getElement("statusFilter").addEventListener(
+        "change",
+        displayQuotes
+    );
+
+    // Customer search.
+    getElement("searchInput").addEventListener(
+        "input",
+        displayQuotes
+    );
+
+    // Quote details dialog.
+    getElement("closeDetails").addEventListener(
+        "click",
+        closeQuoteDetails
+    );
+
+    getElement("closeDetailsFooter").addEventListener(
+        "click",
+        closeQuoteDetails
+    );
+
+    getElement("quoteDetailsDialog").addEventListener(
+        "close",
+        () => {
+            selectedQuote = null;
+        }
+    );
+
+    // Administrator logout.
+    const logoutButton = getElement("logoutButton");
 
     if (logoutButton) {
-
         logoutButton.addEventListener(
             "click",
             handleLogout
         );
     }
-}
 
+    // Load actual customer records from SQLite.
+    loadCustomerQuotes();
+}
 
 // =========================================
 // START DASHBOARD

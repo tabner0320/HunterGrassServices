@@ -2,10 +2,12 @@
 using HunterGrassServices.Api.Data;
 using HunterGrassServices.Api.Models;
 using HunterGrassServices.Api.Services;
+
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+
 using System.ComponentModel.DataAnnotations;
 using System.Threading.RateLimiting;
 
@@ -20,10 +22,13 @@ builder.Services.AddOpenApi();
 
 // Register SQLite database
 builder.Services.AddDbContext<AppDbContext>(options =>
+{
     options.UseSqlite(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    )
-);
+        builder.Configuration.GetConnectionString(
+            "DefaultConnection"
+        )
+    );
+});
 
 // =========================================
 // ANTIFORGERY PROTECTION
@@ -31,18 +36,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddAntiforgery(options =>
 {
-    // Header used by JavaScript to send the token
+    // JavaScript sends this header with
+    // authenticated state-changing requests.
     options.HeaderName = "X-CSRF-TOKEN";
 
-    // Configure the antiforgery cookie
-    options.Cookie.Name = "HunterGrass.Antiforgery";
+    // Configure the antiforgery cookie.
+    options.Cookie.Name =
+        "HunterGrass.Antiforgery";
 
     options.Cookie.HttpOnly = true;
 
     options.Cookie.SecurePolicy =
         CookieSecurePolicy.Always;
 
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SameSite =
+        SameSiteMode.Strict;
 });
 
 // =========================================
@@ -51,68 +59,85 @@ builder.Services.AddAntiforgery(options =>
 
 builder.Services.AddRateLimiter(options =>
 {
-    // Return HTTP 429 when the rate limit is exceeded
+    // Return HTTP 429 when the limit is exceeded.
     options.RejectionStatusCode =
         StatusCodes.Status429TooManyRequests;
 
-    // Administrator login rate limiting policy
-    options.AddPolicy("AdminLoginPolicy", httpContext =>
-    {
-        // Identify the requesting client
-        var clientIp =
-            httpContext.Connection.RemoteIpAddress?.ToString()
-            ?? "unknown";
+    // Limit administrator login attempts.
+    options.AddPolicy(
+        "AdminLoginPolicy",
+        httpContext =>
+        {
+            var clientIp =
+                httpContext.Connection
+                    .RemoteIpAddress?
+                    .ToString()
+                ?? "unknown";
 
-        // Allow five login requests per minute per IP
-        return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: clientIp,
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            });
-    });
+            return RateLimitPartition
+                .GetFixedWindowLimiter(
+                    partitionKey: clientIp,
+                    factory: _ =>
+                        new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,
+
+                            Window =
+                                TimeSpan.FromMinutes(1),
+
+                            QueueLimit = 0,
+
+                            AutoReplenishment = true
+                        }
+                );
+        }
+    );
 });
 
 // =========================================
 // ASP.NET CORE IDENTITY
 // =========================================
 
-builder.Services.AddIdentityCore<IdentityUser>(options =>
-{
-    // Require unique email addresses
-    options.User.RequireUniqueEmail = true;
+builder.Services
+    .AddIdentityCore<IdentityUser>(options =>
+    {
+        // Unique administrator email addresses.
+        options.User.RequireUniqueEmail = true;
 
-    // Password security requirements
-    options.Password.RequiredLength = 12;
-    options.Password.RequireDigit = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireNonAlphanumeric = true;
+        // Password requirements.
+        options.Password.RequiredLength = 12;
 
-    // Account lockout settings
-    options.Lockout.AllowedForNewUsers = true;
+        options.Password.RequireDigit = true;
 
-    options.Lockout.DefaultLockoutTimeSpan =
-        TimeSpan.FromMinutes(15);
+        options.Password.RequireUppercase = true;
 
-    options.Lockout.MaxFailedAccessAttempts = 5;
-})
-.AddRoles<IdentityRole>()
-.AddSignInManager()
-.AddEntityFrameworkStores<AppDbContext>();
+        options.Password.RequireLowercase = true;
+
+        options.Password.RequireNonAlphanumeric = true;
+
+        // Account lockout settings.
+        options.Lockout.AllowedForNewUsers = true;
+
+        options.Lockout.DefaultLockoutTimeSpan =
+            TimeSpan.FromMinutes(15);
+
+        options.Lockout.MaxFailedAccessAttempts = 5;
+    })
+    .AddRoles<IdentityRole>()
+    .AddSignInManager()
+    .AddEntityFrameworkStores<AppDbContext>();
 
 // =========================================
 // AUTHENTICATION
 // =========================================
 
-builder.Services.AddAuthentication(
-    IdentityConstants.ApplicationScheme)
+builder.Services
+    .AddAuthentication(
+        IdentityConstants.ApplicationScheme
+    )
     .AddIdentityCookies();
 
-// Configure administrator authentication cookie
+// Configure administrator authentication cookie.
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "HunterGrass.Admin";
@@ -122,20 +147,27 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy =
         CookieSecurePolicy.Always;
 
-    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SameSite =
+        SameSiteMode.Lax;
 
-    // Authentication session settings
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    // Administrator session lifetime.
+    options.ExpireTimeSpan =
+        TimeSpan.FromMinutes(30);
+
     options.SlidingExpiration = true;
 
-    // Set the administrator login page
+    // Administrator login page.
     options.LoginPath = "/admin/login/";
 
-    // Redirect browser visitors to login,
-    // but return HTTP 401 for API requests
+    // Browser requests redirect to login.
+    // API requests return HTTP 401.
     options.Events.OnRedirectToLogin = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/api"))
+        if (
+            context.Request.Path.StartsWithSegments(
+                "/api"
+            )
+        )
         {
             context.Response.StatusCode =
                 StatusCodes.Status401Unauthorized;
@@ -150,14 +182,15 @@ builder.Services.ConfigureApplicationCookie(options =>
         return Task.CompletedTask;
     };
 
-    // Return 403 for insufficient permissions
-    options.Events.OnRedirectToAccessDenied = context =>
-    {
-        context.Response.StatusCode =
-            StatusCodes.Status403Forbidden;
+    // Return HTTP 403 for insufficient permissions.
+    options.Events.OnRedirectToAccessDenied =
+        context =>
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status403Forbidden;
 
-        return Task.CompletedTask;
-    };
+            return Task.CompletedTask;
+        };
 });
 
 // =========================================
@@ -166,10 +199,15 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(options =>
 {
-    // Require authentication and the Admin role
-    options.AddPolicy("AdminOnly", policy =>
-        policy.RequireAuthenticatedUser()
-              .RequireRole("Admin"));
+    options.AddPolicy(
+        "AdminOnly",
+        policy =>
+        {
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireRole("Admin");
+        }
+    );
 });
 
 // =========================================
@@ -178,51 +216,53 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-
 // =========================================
 // INITIALIZE ADMINISTRATOR ROLE
 // =========================================
 
-await AdminInitializer.InitializeAsync(app.Services);
-
+await AdminInitializer.InitializeAsync(
+    app.Services
+);
 
 // =========================================
-// MIDDLEWARE
+// APPLICATION MIDDLEWARE
 // =========================================
 
-// Redirect HTTP requests to HTTPS first
+// Redirect HTTP traffic to HTTPS.
 app.UseHttpsRedirection();
 
-// Serve the public website and static files
+// Serve public website and static assets.
 app.UseDefaultFiles();
+
 app.UseStaticFiles();
 
-// Enable OpenAPI during development
+// Enable OpenAPI in Development only.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-// Match incoming requests to endpoints
+// Match incoming requests to endpoints.
 app.UseRouting();
 
-// Apply rate limiting policies
+// Apply rate limiting.
 app.UseRateLimiter();
 
-// Authentication must come before authorization
+// Authenticate before authorizing.
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 // =========================================
-// CUSTOMER QUOTE REQUEST API
+// PUBLIC CUSTOMER QUOTE REQUEST API
 // =========================================
 
-// POST: Save a customer quote request
+// POST: Save a customer quote request.
 app.MapPost("/api/quotes", async (
     QuoteRequest request,
     AppDbContext db) =>
 {
-    // Validate customer information
+    // Validate customer information.
     var validationResults =
         new List<ValidationResult>();
 
@@ -236,40 +276,77 @@ app.MapPost("/api/quotes", async (
     if (!isValid)
     {
         return Results.BadRequest(
-            validationResults.Select(r => r.ErrorMessage)
+            validationResults.Select(
+                result => result.ErrorMessage
+            )
         );
     }
 
-    // Assign server-generated values
+    // Set server-generated values.
     request.Id = 0;
+
     request.CreatedAt = DateTime.UtcNow;
 
-    // Save quote request to SQLite
+    // Save the quote request to SQLite.
     db.QuoteRequests.Add(request);
 
     await db.SaveChangesAsync();
 
-    // Return successful response
+    // Return HTTP 201 Created.
     return Results.Created(
         $"/api/quotes/{request.Id}",
         new
         {
             request.Id,
-            Message = "Quote request saved successfully."
+
+            Message =
+                "Quote request saved successfully."
         }
     );
 });
 
 // =========================================
+// ADMINISTRATOR QUOTE MANAGEMENT API
+// =========================================
+
+// GET: Retrieve real customer quote requests.
+//
+// SECURITY:
+// Only authenticated users with the Admin role
+// can access customer quote information.
+
+app.MapGet("/api/admin/quotes", async (
+    AppDbContext db,
+    HttpContext httpContext) =>
+{
+    // Prevent caching of customer information.
+    httpContext.Response.Headers.CacheControl =
+        "no-store";
+
+    // Retrieve quotes without EF change tracking.
+    // Newest customer requests appear first.
+    var quotes = await db.QuoteRequests
+        .AsNoTracking()
+        .OrderByDescending(
+            quote => quote.CreatedAt
+        )
+        .ToListAsync();
+
+    // Return quote requests as JSON.
+    return Results.Ok(quotes);
+})
+.RequireAuthorization("AdminOnly");
+
+// =========================================
 // ANTIFORGERY TOKEN API
 // =========================================
 
-// GET: Generate an antiforgery token
+// GET: Generate an antiforgery security token.
 app.MapGet("/api/admin/antiforgery", (
     HttpContext httpContext,
     IAntiforgery antiforgery) =>
 {
-    // Require HTTPS
+    // Require HTTPS.
     if (!httpContext.Request.IsHttps)
     {
         return Results.BadRequest(new
@@ -278,16 +355,16 @@ app.MapGet("/api/admin/antiforgery", (
         });
     }
 
-    // Generate and store antiforgery tokens
+    // Generate and store antiforgery tokens.
     var tokens = antiforgery.GetAndStoreTokens(
         httpContext
     );
 
-    // Prevent caching of the security token
+    // Prevent token response caching.
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Return the request token to the login page
+    // Return the request token.
     return Results.Ok(new
     {
         Token = tokens.RequestToken
@@ -299,7 +376,7 @@ app.MapGet("/api/admin/antiforgery", (
 // ADMINISTRATOR LOGIN API
 // =========================================
 
-// POST: Authenticate an administrator
+// POST: Authenticate an administrator.
 app.MapPost("/api/admin/login", async (
     AdminLoginRequest request,
     UserManager<IdentityUser> userManager,
@@ -307,7 +384,7 @@ app.MapPost("/api/admin/login", async (
     IAntiforgery antiforgery,
     HttpContext httpContext) =>
 {
-    // Require HTTPS before processing credentials
+    // Require HTTPS.
     if (!httpContext.Request.IsHttps)
     {
         return Results.BadRequest(new
@@ -317,7 +394,7 @@ app.MapPost("/api/admin/login", async (
         });
     }
 
-    // Validate the antiforgery token
+    // Validate antiforgery security token.
     try
     {
         await antiforgery.ValidateRequestAsync(
@@ -333,7 +410,7 @@ app.MapPost("/api/admin/login", async (
         });
     }
 
-    // Validate the login request
+    // Validate login request.
     var validationResults =
         new List<ValidationResult>();
 
@@ -347,16 +424,18 @@ app.MapPost("/api/admin/login", async (
     if (!isValid)
     {
         return Results.BadRequest(
-            validationResults.Select(r => r.ErrorMessage)
+            validationResults.Select(
+                result => result.ErrorMessage
+            )
         );
     }
 
-    // Find the user by email address
+    // Find account by email address.
     var user = await userManager.FindByEmailAsync(
         request.Email.Trim()
     );
 
-    // Reject unknown users
+    // Reject unknown accounts.
     if (user is null)
     {
         return Results.Json(
@@ -369,13 +448,12 @@ app.MapPost("/api/admin/login", async (
         );
     }
 
-    // Verify administrator role
+    // Verify the administrator role.
     var isAdmin = await userManager.IsInRoleAsync(
         user,
         "Admin"
     );
 
-    // Reject users without administrator permissions
     if (!isAdmin)
     {
         return Results.Json(
@@ -388,15 +466,16 @@ app.MapPost("/api/admin/login", async (
         );
     }
 
-    // Verify password and create authentication cookie
-    var result = await signInManager.PasswordSignInAsync(
-        user,
-        request.Password,
-        isPersistent: false,
-        lockoutOnFailure: true
-    );
+    // Verify password and create login cookie.
+    var result =
+        await signInManager.PasswordSignInAsync(
+            user,
+            request.Password,
+            isPersistent: false,
+            lockoutOnFailure: true
+        );
 
-    // Reject unsuccessful authentication attempts
+    // Reject unsuccessful login attempts.
     if (!result.Succeeded)
     {
         return Results.Json(
@@ -409,27 +488,27 @@ app.MapPost("/api/admin/login", async (
         );
     }
 
-    // Successful administrator login
+    // Return successful login response.
     return Results.Ok(new
     {
-        Message = "Administrator login successful."
+        Message =
+            "Administrator login successful."
     });
 })
 .AllowAnonymous()
 .RequireRateLimiting("AdminLoginPolicy");
 
-
 // =========================================
 // ADMINISTRATOR LOGOUT API
 // =========================================
 
-// POST: Sign out the administrator
+// POST: Sign out the administrator.
 app.MapPost("/api/admin/logout", async (
     SignInManager<IdentityUser> signInManager,
     IAntiforgery antiforgery,
     HttpContext httpContext) =>
 {
-    // Require HTTPS
+    // Require HTTPS.
     if (!httpContext.Request.IsHttps)
     {
         return Results.BadRequest(new
@@ -439,7 +518,7 @@ app.MapPost("/api/admin/logout", async (
         });
     }
 
-    // Validate the antiforgery security token
+    // Validate antiforgery security token.
     try
     {
         await antiforgery.ValidateRequestAsync(
@@ -455,18 +534,18 @@ app.MapPost("/api/admin/logout", async (
         });
     }
 
-    // Sign out the administrator and clear
-    // the authentication cookie
+    // Clear the administrator authentication cookie.
     await signInManager.SignOutAsync();
 
-    // Prevent caching of the logout response
+    // Prevent logout response caching.
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Return successful logout response
+    // Return successful logout response.
     return Results.Ok(new
     {
-        Message = "Administrator logout successful."
+        Message =
+            "Administrator logout successful."
     });
 })
 .RequireAuthorization("AdminOnly");
@@ -475,12 +554,12 @@ app.MapPost("/api/admin/logout", async (
 // PROTECTED ADMINISTRATOR DASHBOARD
 // =========================================
 
-// GET: Display the administrator dashboard
+// GET: Display protected administrator dashboard.
 app.MapGet("/admin/", (
     HttpContext httpContext,
     IWebHostEnvironment environment) =>
 {
-    // Locate the protected dashboard HTML
+    // Locate the protected dashboard HTML.
     var dashboardPath = Path.Combine(
         environment.ContentRootPath,
         "Protected",
@@ -488,7 +567,7 @@ app.MapGet("/admin/", (
         "index.html"
     );
 
-    // Verify that the dashboard file exists
+    // Check whether the file exists.
     if (!File.Exists(dashboardPath))
     {
         return Results.NotFound(new
@@ -498,11 +577,11 @@ app.MapGet("/admin/", (
         });
     }
 
-    // Prevent caching of the protected dashboard
+    // Prevent caching of protected HTML.
     httpContext.Response.Headers.CacheControl =
         "no-store";
 
-    // Return the administrator dashboard
+    // Return the protected dashboard.
     return Results.File(
         dashboardPath,
         contentType: "text/html"
@@ -510,9 +589,12 @@ app.MapGet("/admin/", (
 })
 .RequireAuthorization("AdminOnly");
 
-// Protect and redirect the old dashboard URL
-app.MapGet("/admin/index.html", () =>
-    Results.Redirect("/admin/"))
+// Redirect the old dashboard URL.
+// Authorization is still required.
+app.MapGet(
+    "/admin/index.html",
+    () => Results.Redirect("/admin/")
+)
 .RequireAuthorization("AdminOnly");
 
 // =========================================
