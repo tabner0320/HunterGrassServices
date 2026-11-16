@@ -2,15 +2,25 @@
 "use strict";
 
 // =========================================
-// Hunter Grass Services Admin Dashboard
-// DEMO DATA ONLY - No real customer information
+// HUNTER GRASS SERVICES ADMIN DASHBOARD
+// DEMO DATA ONLY
 // =========================================
 
-// Local Storage Key
+// =========================================
+// CONFIGURATION
+// =========================================
 
 const STORAGE_KEY = "hunterGrassDemoStatuses";
 
-// Original Sample Quote Requests
+const validStatuses = [
+    "New",
+    "Contacted",
+    "Completed"
+];
+
+// =========================================
+// ORIGINAL SAMPLE QUOTE REQUESTS
+// =========================================
 
 const originalQuotes = [
     {
@@ -59,14 +69,6 @@ const originalQuotes = [
     }
 ];
 
-// Valid Quote Statuses
-
-const validStatuses = [
-    "New",
-    "Contacted",
-    "Completed"
-];
-
 // Working copy of sample quotes
 
 let sampleQuotes = originalQuotes.map(quote => ({
@@ -77,8 +79,9 @@ let sampleQuotes = originalQuotes.map(quote => ({
 
 let selectedQuote = null;
 
+
 // =========================================
-// Load Saved Quote Statuses
+// LOAD SAVED DEMO STATUSES
 // =========================================
 
 function loadSavedStatuses() {
@@ -123,8 +126,9 @@ function loadSavedStatuses() {
     }
 }
 
+
 // =========================================
-// Save Quote Statuses to Local Storage
+// SAVE DEMO STATUSES
 // =========================================
 
 function saveStatusesToStorage() {
@@ -156,8 +160,9 @@ function saveStatusesToStorage() {
     }
 }
 
+
 // =========================================
-// Update Dashboard Statistics
+// UPDATE DASHBOARD STATISTICS
 // =========================================
 
 function updateStatistics() {
@@ -182,8 +187,9 @@ function updateStatistics() {
         completedQuotes;
 }
 
+
 // =========================================
-// Display Quote Requests
+// DISPLAY QUOTE REQUESTS
 // =========================================
 
 function displayQuotes() {
@@ -223,7 +229,7 @@ function displayQuotes() {
 
     tableBody.replaceChildren();
 
-    // Display empty search message
+    // Display message when no quotes match
 
     if (filteredQuotes.length === 0) {
 
@@ -323,13 +329,12 @@ function displayQuotes() {
     });
 }
 
+
 // =========================================
-// Show Quote Details Popup
+// SHOW QUOTE DETAILS POPUP
 // =========================================
 
 function showQuoteDetails(quote) {
-
-    // Remember the selected quote
 
     selectedQuote = quote;
 
@@ -370,7 +375,7 @@ function showQuoteDetails(quote) {
     document.getElementById("statusUpdateMessage")
         .textContent = "";
 
-    // Open the popup
+    // Open popup
 
     const dialog =
         document.getElementById("quoteDetailsDialog");
@@ -378,13 +383,12 @@ function showQuoteDetails(quote) {
     dialog.showModal();
 }
 
+
 // =========================================
-// Update Quote Request Status
+// UPDATE QUOTE STATUS
 // =========================================
 
 function saveQuoteStatus() {
-
-    // Make sure a quote is selected
 
     if (!selectedQuote) {
         return;
@@ -396,7 +400,7 @@ function saveQuoteStatus() {
     const message =
         document.getElementById("statusUpdateMessage");
 
-    // Validate the selected status
+    // Validate selected status
 
     if (!validStatuses.includes(newStatus)) {
 
@@ -406,7 +410,7 @@ function saveQuoteStatus() {
         return;
     }
 
-    // Check if status has changed
+    // Check whether status changed
 
     if (selectedQuote.status === newStatus) {
 
@@ -416,28 +420,26 @@ function saveQuoteStatus() {
         return;
     }
 
-    // Update the selected quote
+    // Update selected quote
 
     selectedQuote.status = newStatus;
 
-    // Save changes to localStorage
+    // Save to browser storage
 
     const saved = saveStatusesToStorage();
 
-    // Update status inside popup
+    // Update popup status
 
     document.getElementById("detailStatus").textContent =
         newStatus;
 
-    // Refresh dashboard statistics
+    // Refresh dashboard
 
     updateStatistics();
 
-    // Refresh customer quote table
-
     displayQuotes();
 
-    // Display confirmation message
+    // Display confirmation
 
     if (saved) {
 
@@ -451,8 +453,9 @@ function saveQuoteStatus() {
     }
 }
 
+
 // =========================================
-// Reset Demo Data
+// RESET DEMO DATA
 // =========================================
 
 function resetDemoData() {
@@ -464,8 +467,6 @@ function resetDemoData() {
     if (!confirmed) {
         return;
     }
-
-    // Remove saved statuses
 
     try {
 
@@ -491,16 +492,12 @@ function resetDemoData() {
         ...quote
     }));
 
-    // Reset selected quote
-
     selectedQuote = null;
 
-    // Reset status filter
+    // Reset filter and search
 
     document.getElementById("statusFilter").value =
         "All";
-
-    // Clear search input
 
     document.getElementById("searchInput").value =
         "";
@@ -516,8 +513,9 @@ function resetDemoData() {
     );
 }
 
+
 // =========================================
-// Close Quote Details Popup
+// CLOSE QUOTE DETAILS POPUP
 // =========================================
 
 function closeQuoteDetails() {
@@ -528,13 +526,185 @@ function closeQuoteDetails() {
     dialog.close();
 }
 
+
 // =========================================
-// Initialize Dashboard
+// ADMINISTRATOR LOGOUT
+// =========================================
+
+// Display logout status messages
+
+function displayLogoutMessage(message, type = "") {
+
+    const logoutMessage =
+        document.getElementById("logoutMessage");
+
+    logoutMessage.textContent = message;
+
+    logoutMessage.className = "logout-message";
+
+    if (type) {
+
+        logoutMessage.classList.add(type);
+    }
+}
+
+
+// =========================================
+// RETRIEVE ANTIFORGERY TOKEN
+// =========================================
+
+async function getLogoutAntiforgeryToken() {
+
+    const response = await fetch(
+        "/api/admin/antiforgery",
+        {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store"
+        }
+    );
+
+    if (!response.ok) {
+
+        throw new Error(
+            "Unable to retrieve security token."
+        );
+    }
+
+    const data = await response.json();
+
+    if (!data.token) {
+
+        throw new Error(
+            "Security token was not received."
+        );
+    }
+
+    return data.token;
+}
+
+
+// =========================================
+// SIGN OUT ADMINISTRATOR
+// =========================================
+
+async function handleLogout() {
+
+    const logoutButton =
+        document.getElementById("logoutButton");
+
+    // Prevent duplicate logout requests
+
+    if (logoutButton.disabled) {
+        return;
+    }
+
+    logoutButton.disabled = true;
+
+    logoutButton.textContent = "Signing Out...";
+
+    displayLogoutMessage("Signing out...");
+
+    let redirecting = false;
+
+    try {
+
+        // Retrieve fresh antiforgery token
+
+        const token =
+            await getLogoutAntiforgeryToken();
+
+        // Send logout request
+
+        const response = await fetch(
+            "/api/admin/logout",
+            {
+                method: "POST",
+
+                headers: {
+                    "X-CSRF-TOKEN": token
+                },
+
+                credentials: "same-origin",
+                cache: "no-store"
+            }
+        );
+
+        // Successful logout or expired session
+
+        if (
+            response.ok ||
+            response.status === 401
+        ) {
+
+            displayLogoutMessage(
+                "Signed out successfully.",
+                "success"
+            );
+
+            redirecting = true;
+
+            // Replace dashboard in browser history
+
+            window.location.replace(
+                "/admin/login/"
+            );
+
+            return;
+        }
+
+        // Invalid antiforgery token
+
+        if (response.status === 400) {
+
+            displayLogoutMessage(
+                "Security validation failed. Please try again.",
+                "error"
+            );
+
+            return;
+        }
+
+        // Other unsuccessful responses
+
+        displayLogoutMessage(
+            "Unable to sign out. Please try again.",
+            "error"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Administrator logout error:",
+            error
+        );
+
+        displayLogoutMessage(
+            "Unable to connect to the server. Please try again.",
+            "error"
+        );
+
+    } finally {
+
+        // Restore button if logout was unsuccessful
+
+        if (!redirecting) {
+
+            logoutButton.disabled = false;
+
+            logoutButton.textContent = "Sign Out";
+        }
+    }
+}
+
+
+// =========================================
+// INITIALIZE DASHBOARD
 // =========================================
 
 function initializeDashboard() {
 
-    // Restore previously saved statuses
+    // Restore saved demo statuses
 
     loadSavedStatuses();
 
@@ -544,30 +714,45 @@ function initializeDashboard() {
 
     displayQuotes();
 
-    // Status filter
+    // Status Filter
 
     document.getElementById("statusFilter")
-        .addEventListener("change", displayQuotes);
+        .addEventListener(
+            "change",
+            displayQuotes
+        );
 
-    // Customer search
+    // Customer Search
 
     document.getElementById("searchInput")
-        .addEventListener("input", displayQuotes);
+        .addEventListener(
+            "input",
+            displayQuotes
+        );
 
-    // Save quote status
+    // Save Quote Status
 
     document.getElementById("saveStatus")
-        .addEventListener("click", saveQuoteStatus);
+        .addEventListener(
+            "click",
+            saveQuoteStatus
+        );
 
-    // Close popup using X button
+    // Close Popup - X Button
 
     document.getElementById("closeDetails")
-        .addEventListener("click", closeQuoteDetails);
+        .addEventListener(
+            "click",
+            closeQuoteDetails
+        );
 
-    // Close popup using footer button
+    // Close Popup - Footer Button
 
     document.getElementById("closeDetailsFooter")
-        .addEventListener("click", closeQuoteDetails);
+        .addEventListener(
+            "click",
+            closeQuoteDetails
+        );
 
     // Reset selected quote when popup closes
 
@@ -577,7 +762,7 @@ function initializeDashboard() {
             selectedQuote = null;
         });
 
-    // Reset Demo button
+    // Reset Demo Button
 
     const resetButton =
         document.getElementById("resetDemo");
@@ -589,9 +774,25 @@ function initializeDashboard() {
             resetDemoData
         );
     }
+
+    // Administrator Sign Out Button
+
+    const logoutButton =
+        document.getElementById("logoutButton");
+
+    if (logoutButton) {
+
+        logoutButton.addEventListener(
+            "click",
+            handleLogout
+        );
+    }
 }
 
-// Start dashboard when page loads
+
+// =========================================
+// START DASHBOARD
+// =========================================
 
 document.addEventListener(
     "DOMContentLoaded",

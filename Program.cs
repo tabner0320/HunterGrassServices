@@ -418,6 +418,59 @@ app.MapPost("/api/admin/login", async (
 .AllowAnonymous()
 .RequireRateLimiting("AdminLoginPolicy");
 
+
+// =========================================
+// ADMINISTRATOR LOGOUT API
+// =========================================
+
+// POST: Sign out the administrator
+app.MapPost("/api/admin/logout", async (
+    SignInManager<IdentityUser> signInManager,
+    IAntiforgery antiforgery,
+    HttpContext httpContext) =>
+{
+    // Require HTTPS
+    if (!httpContext.Request.IsHttps)
+    {
+        return Results.BadRequest(new
+        {
+            Message =
+                "HTTPS is required for administrator logout."
+        });
+    }
+
+    // Validate the antiforgery security token
+    try
+    {
+        await antiforgery.ValidateRequestAsync(
+            httpContext
+        );
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest(new
+        {
+            Message =
+                "Invalid or missing security token."
+        });
+    }
+
+    // Sign out the administrator and clear
+    // the authentication cookie
+    await signInManager.SignOutAsync();
+
+    // Prevent caching of the logout response
+    httpContext.Response.Headers.CacheControl =
+        "no-store";
+
+    // Return successful logout response
+    return Results.Ok(new
+    {
+        Message = "Administrator logout successful."
+    });
+})
+.RequireAuthorization("AdminOnly");
+
 // =========================================
 // PROTECTED ADMINISTRATOR DASHBOARD
 // =========================================
