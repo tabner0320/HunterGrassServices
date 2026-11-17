@@ -633,6 +633,12 @@ function initializeDashboard() {
         displayQuotes
     );
 
+    // Refresh customer quotes without reloading the page.
+    getElement("refreshQuotes").addEventListener(
+        "click",
+        loadCustomerQuotes
+    );
+
     // Save quote status.
     getElement("saveStatus").addEventListener(
         "click",

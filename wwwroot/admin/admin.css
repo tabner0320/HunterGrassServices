@@ -835,3 +835,28 @@ tbody tr:hover {
         transition: none !important;
     }
 }
+
+/* =========================================
+   REFRESH QUOTES BUTTON
+   ========================================= */
+
+.refresh-quotes-button {
+    padding: 10px 16px;
+    background-color: #1d6338;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.refresh-quotes-button:hover {
+    background-color: #144a29;
+}
+
+.refresh-quotes-button:focus-visible {
+    outline: 3px solid #85c79d;
+    outline-offset: 2px;
+}
