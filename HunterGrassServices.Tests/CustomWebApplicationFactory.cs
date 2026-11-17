@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using System.Security.Claims;
 using System.Text.Encodings.Web;
@@ -20,7 +21,7 @@ public class CustomWebApplicationFactory
     : WebApplicationFactory<Program>
 {
     // =========================================
-    // TEMPORARY TEST DATABASE
+    // TEST DATABASE
     // =========================================
 
     private readonly string _databasePath =
@@ -30,12 +31,12 @@ public class CustomWebApplicationFactory
         );
 
     // =========================================
-    // TEST AUTHENTICATION SETTINGS
+    // AUTHENTICATION SETTINGS
     // =========================================
 
-    // Set to true when testing a signed-in
-    // user who does not have the Admin role.
     public bool UseRegularUserAuthentication { get; set; }
+
+    public bool UseAdminAuthentication { get; set; }
 
     // =========================================
     // CONFIGURE TEST APPLICATION
@@ -44,7 +45,6 @@ public class CustomWebApplicationFactory
     protected override void ConfigureWebHost(
         IWebHostBuilder builder)
     {
-        // Each factory gets its own SQLite file.
         var connectionString =
             $"Data Source={_databasePath};Pooling=False";
 
@@ -66,8 +66,8 @@ public class CustomWebApplicationFactory
                         ["ConnectionStrings:DefaultConnection"] =
                             connectionString,
 
-                        // Never seed real administrator
-                        // credentials during testing.
+                        // Prevent real admin credentials
+                        // from being used in tests.
                         ["AdminSettings:Email"] = "",
                         ["AdminSettings:Password"] = ""
                     }
@@ -81,8 +81,20 @@ public class CustomWebApplicationFactory
 
         builder.ConfigureTestServices(services =>
         {
-            if (UseRegularUserAuthentication)
+            if (UseRegularUserAuthentication ||
+                UseAdminAuthentication)
             {
+                // Tell the test handler whether
+                // this simulated user is an admin.
+
+                services.Configure<TestAuthenticationSettings>(
+                    options =>
+                    {
+                        options.IsAdmin =
+                            UseAdminAuthentication;
+                    }
+                );
+
                 // Register a separate test scheme.
                 // Do not register Identity.Application
                 // again because Program.cs already
@@ -110,7 +122,7 @@ public class CustomWebApplicationFactory
         });
 
         // =====================================
-        // INITIALIZE TEST DATABASE
+        // CREATE TEMPORARY SQLITE DATABASE
         // =====================================
 
         builder.ConfigureServices(services =>
@@ -124,13 +136,12 @@ public class CustomWebApplicationFactory
             var db = scope.ServiceProvider
                 .GetRequiredService<AppDbContext>();
 
-            // Create the Identity and quote tables.
             db.Database.EnsureCreated();
         });
     }
 
     // =========================================
-    // CLEAN UP TEST DATABASE
+    // CLEAN UP TEMPORARY DATABASE
     // =========================================
 
     protected override void Dispose(bool disposing)
@@ -142,10 +153,8 @@ public class CustomWebApplicationFactory
             return;
         }
 
-        // Release SQLite connections.
         SqliteConnection.ClearAllPools();
 
-        // Remove temporary database files.
         foreach (var suffix in new[] { "", "-wal", "-shm" })
         {
             var path = _databasePath + suffix;
@@ -159,41 +168,63 @@ public class CustomWebApplicationFactory
 }
 
 // =========================================
-// TEST-ONLY AUTHENTICATION HANDLER
+// TEST AUTHENTICATION SETTINGS
+// =========================================
+
+internal sealed class TestAuthenticationSettings
+{
+    public bool IsAdmin { get; set; }
+}
+
+// =========================================
+// TEST AUTHENTICATION HANDLER
 // =========================================
 
 internal sealed class RegularUserTestAuthHandler
     : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    private readonly bool _isAdmin;
+
     public RegularUserTestAuthHandler(
-        Microsoft.Extensions.Options.IOptionsMonitor<
-            AuthenticationSchemeOptions> options,
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
+        UrlEncoder encoder,
+        IOptions<TestAuthenticationSettings> testSettings)
         : base(options, logger, encoder)
     {
+        _isAdmin = testSettings.Value.IsAdmin;
     }
 
     protected override Task<AuthenticateResult>
         HandleAuthenticateAsync()
     {
-        // Simulate an authenticated regular user.
-        //
-        // Notice that there is no Admin role
-        // in the claims below.
+        // Create a simulated authenticated user.
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(
                 ClaimTypes.NameIdentifier,
-                "regular-test-user"
+                "test-user"
             ),
 
             new Claim(
                 ClaimTypes.Name,
-                "regular-test@example.com"
+                "test@example.com"
             )
         };
+
+        // Administrators receive the Admin role.
+        // Regular users do not.
+
+        if (_isAdmin)
+        {
+            claims.Add(
+                new Claim(
+                    ClaimTypes.Role,
+                    "Admin"
+                )
+            );
+        }
 
         var identity = new ClaimsIdentity(
             claims,
