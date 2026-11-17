@@ -257,6 +257,95 @@ public class AdminQuoteManagementTests
             result.Message);
     }
 
+
+    // =========================================
+    // TEST 5: UNAUTHENTICATED USER
+    // =========================================
+
+    [Fact]
+    public async Task UpdateQuoteStatus_UnauthenticatedUser_IsDenied()
+    {
+        using var factory = new CustomWebApplicationFactory();
+
+        using var client = CreateAdminClient(factory);
+
+        using var response = await UpdateStatusAsync(
+            client,
+            1,
+            "Completed");
+
+        Assert.True(
+            response.StatusCode == HttpStatusCode.Unauthorized ||
+            response.StatusCode == HttpStatusCode.Redirect ||
+            response.StatusCode == HttpStatusCode.Found,
+            $"Unexpected status code: {response.StatusCode}");
+    }
+
+    // =========================================
+    // TEST 6: REGULAR USER
+    // =========================================
+
+    [Fact]
+    public async Task UpdateQuoteStatus_RegularUser_IsForbidden()
+    {
+        using var factory = new CustomWebApplicationFactory
+        {
+            UseRegularUserAuthentication = true
+        };
+
+        using var client = CreateAdminClient(factory);
+
+        using var response = await UpdateStatusAsync(
+            client,
+            1,
+            "Completed");
+
+        Assert.True(
+            response.StatusCode == HttpStatusCode.Forbidden ||
+            response.StatusCode == HttpStatusCode.Redirect ||
+            response.StatusCode == HttpStatusCode.Found,
+            $"Unexpected status code: {response.StatusCode}");
+    }
+
+    // =========================================
+    // TEST 7: HTTP INSTEAD OF HTTPS
+    // =========================================
+
+    [Fact]
+    public async Task UpdateQuoteStatus_HttpRequest_IsRejected()
+    {
+        using var factory = new CustomWebApplicationFactory
+        {
+            UseAdminAuthentication = true
+        };
+
+        using var client = CreateAdminClient(factory);
+
+        // Use HTTP intentionally to test HTTPS enforcement.
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put,
+            "http://localhost/api/admin/quotes/1/status");
+
+        request.Content = JsonContent.Create(
+            new { Status = "Completed" });
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<
+            MessageResponse>();
+
+        Assert.NotNull(result);
+
+        Assert.Equal(
+            "HTTPS is required.",
+            result.Message);
+    }
+
+
     // =========================================
     // RESPONSE MODELS
     // =========================================
