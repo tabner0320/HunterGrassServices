@@ -1,7 +1,12 @@
-
 using System.Net;
 using System.Net.Http.Json;
+
+using HunterGrassServices.Api.Data;
+
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
 using Xunit;
 
 namespace HunterGrassServices.Tests;
@@ -343,6 +348,76 @@ public class AdminQuoteManagementTests
         Assert.Equal(
             "HTTPS is required.",
             result.Message);
+    }
+
+
+    // =========================================
+    // TEST 8: SQLITE DATABASE PERSISTENCE
+    // =========================================
+
+    [Fact]
+    public async Task UpdateQuoteStatus_ValidStatus_PersistsInDatabase()
+    {
+        using var factory = new CustomWebApplicationFactory
+        {
+            UseAdminAuthentication = true
+        };
+
+        using var client = CreateAdminClient(factory);
+
+        // Create a quote.
+        var quoteRequest = new
+        {
+            CustomerName = "Persistence Test Customer",
+            Email = "persistence@example.com",
+            Phone = "5025551234",
+            Address = "123 Persistence Street",
+            Service = "Lawn Mowing",
+            Message = "Testing SQLite persistence"
+        };
+
+        using var createResponse = await client.PostAsJsonAsync(
+            "/api/quotes",
+            quoteRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            createResponse.StatusCode);
+
+        var created = await createResponse.Content
+            .ReadFromJsonAsync<CreatedQuoteResponse>();
+
+        Assert.NotNull(created);
+
+        // Retrieve antiforgery token.
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        // Update the status.
+        using var updateResponse = await UpdateStatusAsync(
+            client,
+            created.Id,
+            "Contacted",
+            token);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            updateResponse.StatusCode);
+
+        // Create a separate database context scope.
+        using var scope = factory.Services.CreateScope();
+
+        var db = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+
+        // Read the saved quote from SQLite.
+        var savedQuote = await db.QuoteRequests
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.Id == created.Id);
+
+        Assert.NotNull(savedQuote);
+
+        // Verify the saved status.
+        Assert.Equal("Contacted", savedQuote.Status);
     }
 
 
