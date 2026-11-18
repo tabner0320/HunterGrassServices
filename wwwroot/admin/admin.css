@@ -872,3 +872,27 @@ tbody tr:hover {
     color: #64748b;
     white-space: nowrap;
 }
+
+/* =========================================
+   LIVE REFRESH STATUS INDICATOR
+   ========================================= */
+
+.refresh-status {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 12px;
+}
+
+.refresh-loading {
+    color: #2563eb;
+}
+
+.refresh-success {
+    color: #16803c;
+}
+
+.refresh-error {
+    color: #b42318;
+}
