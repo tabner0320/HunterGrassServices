@@ -13,6 +13,7 @@
 let customerQuotes = [];
 let selectedQuote = null;
 let savingStatus = false;
+let loadingQuotes = false;
 
 const ALLOWED_STATUSES = [
     "New",
