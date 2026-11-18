@@ -233,15 +233,26 @@
                         autocomplete="off"
                     >
 
-                      <!-- Refresh customer quotes -->
+                     <!-- Refresh customer quotes -->
 
-                    <button
-                        type="button"
-                        id="refreshQuotes"
-                        class="refresh-quotes-button"
-                    >
-                        Refresh Quotes
-                    </button>
+<button
+    type="button"
+    id="refreshQuotes"
+    class="refresh-quotes-button"
+>
+    Refresh Quotes
+</button>
+
+<!-- Last successful refresh timestamp -->
+
+<span
+    id="lastRefreshed"
+    class="last-refreshed"
+    role="status"
+    aria-live="polite"
+>
+    Last refreshed: Not yet
+</span>
 
                 </div>
 

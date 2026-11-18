@@ -75,6 +75,27 @@ function formatQuoteDate(createdAt) {
 }
 
 // =========================================
+// LAST SUCCESSFUL REFRESH TIMESTAMP
+// =========================================
+
+function updateLastRefreshed() {
+    const refreshedAt = new Date();
+
+    const formattedTime = refreshedAt.toLocaleTimeString(
+        undefined,
+        {
+            hour: "numeric",
+            minute: "2-digit"
+        }
+    );
+
+    setText(
+        "lastRefreshed",
+        `Last refreshed: ${formattedTime}`
+    );
+}
+
+// =========================================
 // LOAD REAL CUSTOMER QUOTES
 // =========================================
 
@@ -120,6 +141,7 @@ async function loadCustomerQuotes() {
             showTableMessage(
                 "You do not have permission to view customer requests."
             );
+
             return;
         }
 
@@ -150,8 +172,12 @@ async function loadCustomerQuotes() {
             status: quote.status ?? "New"
         }));
 
+        // Update dashboard data.
         updateStatistics();
         displayQuotes();
+
+        // Step 47: Update only after a successful load.
+        updateLastRefreshed();
 
     } catch (error) {
         console.error(
@@ -261,6 +287,7 @@ function displayQuotes() {
                 ? "No customer quote requests have been submitted yet."
                 : "No matching quote requests found."
         );
+
         return;
     }
 
@@ -381,6 +408,7 @@ async function saveQuoteStatus() {
             "Please select a valid status.",
             "error"
         );
+
         return;
     }
 
@@ -388,6 +416,7 @@ async function saveQuoteStatus() {
         showStatusMessage(
             "This quote already has the selected status."
         );
+
         return;
     }
 
@@ -429,6 +458,7 @@ async function saveQuoteStatus() {
                 "You do not have permission to update quotes.",
                 "error"
             );
+
             return;
         }
 
@@ -464,6 +494,9 @@ async function saveQuoteStatus() {
 
         updateStatistics();
         displayQuotes();
+
+        // Do not update Last Refreshed here.
+        // This operation saves a status, not reloads quotes.
 
         showStatusMessage(
             "Quote status saved successfully.",
@@ -601,6 +634,7 @@ async function handleLogout() {
                 "Security validation failed. Please try again.",
                 "error"
             );
+
             return;
         }
 

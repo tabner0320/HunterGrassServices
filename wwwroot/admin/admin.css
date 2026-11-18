@@ -860,3 +860,15 @@ tbody tr:hover {
     outline: 3px solid #85c79d;
     outline-offset: 2px;
 }
+
+/* =========================================
+   LAST REFRESHED TIMESTAMP
+   ========================================= */
+
+.last-refreshed {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #64748b;
+    white-space: nowrap;
+}
