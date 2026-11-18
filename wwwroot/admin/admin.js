@@ -15,6 +15,9 @@ let selectedQuote = null;
 let savingStatus = false;
 let loadingQuotes = false;
 
+// Automatically check for new quotes every 60 seconds.
+const AUTO_REFRESH_INTERVAL = 60_000;
+
 const ALLOWED_STATUSES = [
     "New",
     "Contacted",
@@ -93,6 +96,30 @@ function updateLastRefreshed() {
         "lastRefreshed",
         `Last refreshed: ${formattedTime}`
     );
+}
+
+// =========================================
+// TABLE STATUS MESSAGES
+// =========================================
+
+function showTableMessage(message) {
+    const tableBody = getElement("quotesTable");
+
+    if (!tableBody) {
+        return;
+    }
+
+    tableBody.replaceChildren();
+
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+
+    cell.colSpan = 5;
+    cell.classList.add("no-results");
+    cell.textContent = message;
+
+    row.appendChild(cell);
+    tableBody.appendChild(row);
 }
 
 // =========================================
@@ -176,7 +203,7 @@ async function loadCustomerQuotes() {
         updateStatistics();
         displayQuotes();
 
-        // Step 47: Update only after a successful load.
+        // Update only after a successful load.
         updateLastRefreshed();
 
     } catch (error) {
@@ -201,30 +228,6 @@ async function loadCustomerQuotes() {
             refreshButton.textContent = "Refresh Quotes";
         }
     }
-}
-
-// =========================================
-// TABLE STATUS MESSAGES
-// =========================================
-
-function showTableMessage(message) {
-    const tableBody = getElement("quotesTable");
-
-    if (!tableBody) {
-        return;
-    }
-
-    tableBody.replaceChildren();
-
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-
-    cell.colSpan = 5;
-    cell.classList.add("no-results");
-    cell.textContent = message;
-
-    row.appendChild(cell);
-    tableBody.appendChild(row);
 }
 
 // =========================================
@@ -495,8 +498,7 @@ async function saveQuoteStatus() {
         updateStatistics();
         displayQuotes();
 
-        // Do not update Last Refreshed here.
-        // This operation saves a status, not reloads quotes.
+        // Saving a status does not count as refreshing quotes.
 
         showStatusMessage(
             "Quote status saved successfully.",
@@ -663,6 +665,35 @@ async function handleLogout() {
 }
 
 // =========================================
+// AUTOMATIC QUOTE REFRESH
+// =========================================
+
+function startAutomaticRefresh() {
+    setInterval(() => {
+        // Do not refresh a hidden browser tab.
+        if (document.hidden) {
+            return;
+        }
+
+        // Do not overlap requests or status updates.
+        if (loadingQuotes || savingStatus) {
+            return;
+        }
+
+        // Do not interrupt the quote details dialog.
+        const detailsDialog = getElement("quoteDetailsDialog");
+
+        if (detailsDialog?.open) {
+            return;
+        }
+
+        // Reuse the existing secure API request.
+        loadCustomerQuotes();
+
+    }, AUTO_REFRESH_INTERVAL);
+}
+
+// =========================================
 // INITIALIZE LIVE DASHBOARD
 // =========================================
 
@@ -694,7 +725,7 @@ function initializeDashboard() {
         displayQuotes
     );
 
-    // Refresh quotes without reloading the page.
+    // Manual refresh without reloading the page.
     getElement("refreshQuotes").addEventListener(
         "click",
         loadCustomerQuotes
@@ -734,8 +765,11 @@ function initializeDashboard() {
         );
     }
 
-    // Load customer quotes from SQLite.
+    // Load customer quotes when the dashboard opens.
     loadCustomerQuotes();
+
+    // Start automatic refreshing every 60 seconds.
+    startAutomaticRefresh();
 }
 
 // =========================================
