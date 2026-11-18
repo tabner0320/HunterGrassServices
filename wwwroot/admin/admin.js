@@ -126,7 +126,7 @@ function showTableMessage(message) {
 // LOAD REAL CUSTOMER QUOTES
 // =========================================
 
-async function loadCustomerQuotes() {
+async function loadCustomerQuotes(silent = false) {
     // Prevent duplicate requests.
     if (loadingQuotes) {
         return;
@@ -136,13 +136,19 @@ async function loadCustomerQuotes() {
 
     const refreshButton = getElement("refreshQuotes");
 
-    // Show loading state.
+    // Disable manual refresh while loading, but avoid visual flashing
+    // during an automatic background refresh.
     if (refreshButton) {
         refreshButton.disabled = true;
-        refreshButton.textContent = "Refreshing...";
+        if (!silent) {
+            refreshButton.textContent = "Refreshing...";
+        }
     }
 
-    showTableMessage("Loading customer requests...");
+    // Keep existing quotes visible during background refreshes.
+    if (!silent) {
+        showTableMessage("Loading customer requests...");
+    }
 
     try {
         const response = await fetch(
@@ -160,7 +166,7 @@ async function loadCustomerQuotes() {
             return;
         }
 
-        // Handle insufficient permissions.
+        // Always report permission failures, including silent refreshes.
         if (response.status === 403) {
             customerQuotes = [];
             updateStatistics();
@@ -212,12 +218,15 @@ async function loadCustomerQuotes() {
             error
         );
 
-        customerQuotes = [];
-        updateStatistics();
+        // Preserve the last successful results if a silent refresh fails.
+        if (!silent) {
+            customerQuotes = [];
+            updateStatistics();
 
-        showTableMessage(
-            "Unable to load customer requests. Please try Refresh Quotes again."
-        );
+            showTableMessage(
+                "Unable to load customer requests. Please try Refresh Quotes again."
+            );
+        }
 
     } finally {
         // Always restore the refresh button.
@@ -225,7 +234,9 @@ async function loadCustomerQuotes() {
 
         if (refreshButton) {
             refreshButton.disabled = false;
-            refreshButton.textContent = "Refresh Quotes";
+            if (!silent) {
+                refreshButton.textContent = "Refresh Quotes";
+            }
         }
     }
 }
@@ -688,7 +699,7 @@ function startAutomaticRefresh() {
         }
 
         // Reuse the existing secure API request.
-        loadCustomerQuotes();
+        loadCustomerQuotes(true);
 
     }, AUTO_REFRESH_INTERVAL);
 }
@@ -728,7 +739,7 @@ function initializeDashboard() {
     // Manual refresh without reloading the page.
     getElement("refreshQuotes").addEventListener(
         "click",
-        loadCustomerQuotes
+        () => loadCustomerQuotes(false)
     );
 
     // Save quote status.
