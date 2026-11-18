@@ -99,6 +99,43 @@ function updateLastRefreshed() {
 }
 
 // =========================================
+// LIVE REFRESH STATUS INDICATOR
+// =========================================
+
+function updateRefreshStatus(status) {
+    const element = getElement("refreshStatus");
+
+    if (!element) {
+        return;
+    }
+
+    const messages = {
+        loading: "Refreshing...",
+        success: "Up to date",
+        error: "Connection issue"
+    };
+
+    const statusClasses = {
+        loading: "refresh-loading",
+        success: "refresh-success",
+        error: "refresh-error"
+    };
+
+    element.textContent =
+        messages[status] ?? "Status unavailable";
+
+    element.classList.remove(
+        "refresh-loading",
+        "refresh-success",
+        "refresh-error"
+    );
+
+    if (statusClasses[status]) {
+        element.classList.add(statusClasses[status]);
+    }
+}
+
+// =========================================
 // TABLE STATUS MESSAGES
 // =========================================
 
@@ -134,12 +171,16 @@ async function loadCustomerQuotes(silent = false) {
 
     loadingQuotes = true;
 
+    // Step 50: Show that refreshing has started.
+    updateRefreshStatus("loading");
+
     const refreshButton = getElement("refreshQuotes");
 
-    // Disable manual refresh while loading, but avoid visual flashing
-    // during an automatic background refresh.
+    // Disable manual refresh while loading.
+    // Avoid button text flashing during background refresh.
     if (refreshButton) {
         refreshButton.disabled = true;
+
         if (!silent) {
             refreshButton.textContent = "Refreshing...";
         }
@@ -166,7 +207,8 @@ async function loadCustomerQuotes(silent = false) {
             return;
         }
 
-        // Always report permission failures, including silent refreshes.
+        // Always report permission failures,
+        // including silent refreshes.
         if (response.status === 403) {
             customerQuotes = [];
             updateStatistics();
@@ -175,6 +217,7 @@ async function loadCustomerQuotes(silent = false) {
                 "You do not have permission to view customer requests."
             );
 
+            updateRefreshStatus("error");
             return;
         }
 
@@ -212,13 +255,21 @@ async function loadCustomerQuotes(silent = false) {
         // Update only after a successful load.
         updateLastRefreshed();
 
+        // Step 50: Mark refresh as successful.
+        updateRefreshStatus("success");
+
     } catch (error) {
         console.error(
             "Unable to load customer quotes:",
             error
         );
 
-        // Preserve the last successful results if a silent refresh fails.
+        // Step 50: Report failed refreshes,
+        // including silent background failures.
+        updateRefreshStatus("error");
+
+        // Preserve the last successful results
+        // if a silent refresh fails.
         if (!silent) {
             customerQuotes = [];
             updateStatistics();
@@ -229,11 +280,12 @@ async function loadCustomerQuotes(silent = false) {
         }
 
     } finally {
-        // Always restore the refresh button.
         loadingQuotes = false;
 
+        // Restore the manual refresh button.
         if (refreshButton) {
             refreshButton.disabled = false;
+
             if (!silent) {
                 refreshButton.textContent = "Refresh Quotes";
             }
@@ -510,7 +562,6 @@ async function saveQuoteStatus() {
         displayQuotes();
 
         // Saving a status does not count as refreshing quotes.
-
         showStatusMessage(
             "Quote status saved successfully.",
             "success"
