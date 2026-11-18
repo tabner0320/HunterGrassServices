@@ -873,26 +873,65 @@ tbody tr:hover {
     white-space: nowrap;
 }
 
+
 /* =========================================
-   LIVE REFRESH STATUS INDICATOR
+   STEP 51 - PROFESSIONAL REFRESH STATUS
    ========================================= */
 
 .refresh-status {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border: 1px solid transparent;
+    border-radius: 999px;
     font-size: 0.85rem;
     font-weight: 600;
+    line-height: 1.2;
     margin-left: 12px;
+    white-space: nowrap;
 }
+
+/* Small status indicator dot */
+
+.refresh-status::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+/* Refresh in progress */
 
 .refresh-loading {
     color: #2563eb;
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
 }
+
+/* Refresh successful */
 
 .refresh-success {
     color: #16803c;
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
 }
+
+/* Connection issue */
 
 .refresh-error {
     color: #b42318;
+    background-color: #fef2f2;
+    border-color: #fecaca;
+}
+
+/* Responsive spacing for smaller screens */
+
+@media (max-width: 650px) {
+    .refresh-status {
+        margin-left: 0;
+    }
 }
