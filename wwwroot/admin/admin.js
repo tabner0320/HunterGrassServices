@@ -79,6 +79,21 @@ function formatQuoteDate(createdAt) {
 // =========================================
 
 async function loadCustomerQuotes() {
+    // Prevent duplicate requests.
+    if (loadingQuotes) {
+        return;
+    }
+
+    loadingQuotes = true;
+
+    const refreshButton = getElement("refreshQuotes");
+
+    // Show loading state.
+    if (refreshButton) {
+        refreshButton.disabled = true;
+        refreshButton.textContent = "Refreshing...";
+    }
+
     showTableMessage("Loading customer requests...");
 
     try {
@@ -91,11 +106,13 @@ async function loadCustomerQuotes() {
             }
         );
 
+        // Redirect if administrator is not logged in.
         if (response.status === 401) {
             window.location.replace("/admin/login/");
             return;
         }
 
+        // Handle insufficient permissions.
         if (response.status === 403) {
             customerQuotes = [];
             updateStatistics();
@@ -120,6 +137,7 @@ async function loadCustomerQuotes() {
             );
         }
 
+        // Convert API response into dashboard quote objects.
         customerQuotes = data.map(quote => ({
             id: quote.id,
             customerName: quote.customerName ?? "",
@@ -145,8 +163,17 @@ async function loadCustomerQuotes() {
         updateStatistics();
 
         showTableMessage(
-            "Unable to load customer requests. Please refresh the page."
+            "Unable to load customer requests. Please try Refresh Quotes again."
         );
+
+    } finally {
+        // Always restore the refresh button.
+        loadingQuotes = false;
+
+        if (refreshButton) {
+            refreshButton.disabled = false;
+            refreshButton.textContent = "Refresh Quotes";
+        }
     }
 }
 
@@ -429,8 +456,7 @@ async function saveQuoteStatus() {
             );
         }
 
-        // Update the in-memory quote only after
-        // the server confirms successful saving.
+        // Update local data after successful server response.
         selectedQuote.status = result.status;
 
         setText("detailStatus", result.status);
@@ -634,7 +660,7 @@ function initializeDashboard() {
         displayQuotes
     );
 
-    // Refresh customer quotes without reloading the page.
+    // Refresh quotes without reloading the page.
     getElement("refreshQuotes").addEventListener(
         "click",
         loadCustomerQuotes
